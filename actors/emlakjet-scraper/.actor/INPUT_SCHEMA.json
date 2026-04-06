@@ -1,0 +1,81 @@
+{
+    "title": "Emlakjet Scraper - Girdi Parametreleri",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "categories": {
+            "title": "Kategoriler",
+            "type": "array",
+            "description": "Scrape edilecek kategoriler. Seçenekler: satilik_konut, kiralik_konut, satilik_isyeri, kiralik_isyeri, devren_isyeri, satilik_arsa, kiralik_arsa",
+            "items": {
+                "type": "string"
+            },
+            "default": [
+                "satilik_konut",
+                "kiralik_konut",
+                "satilik_isyeri",
+                "kiralik_isyeri",
+                "devren_isyeri",
+                "satilik_arsa",
+                "kiralik_arsa"
+            ],
+            "editor": "json"
+        },
+        "maxPages": {
+            "title": "Maksimum Sayfa Sayısı",
+            "type": "integer",
+            "description": "Kategori başına işlenecek maksimum sayfa. 0 = sınırsız.",
+            "default": 0,
+            "minimum": 0
+        },
+        "workers": {
+            "title": "Worker Sayısı (kategori başına)",
+            "type": "integer",
+            "description": "Kategori başına paralel sayfa worker sayısı. Her worker bir Chrome açar. scrapeDetails=false: 10 önerilir. scrapeDetails=true: 3-5 önerilir (detay sayfaları Chrome'ı uzun açık tutar).",
+            "default": 5,
+            "minimum": 1,
+            "maximum": 20
+        },
+        "delay": {
+            "title": "İstek Gecikmesi (saniye)",
+            "type": "number",
+            "description": "Sayfalar arasındaki bekleme süresi.",
+            "default": 0.8,
+            "minimum": 0.3
+        },
+        "settle": {
+            "title": "Sayfa Yerleşme Süresi (saniye)",
+            "type": "number",
+            "description": "Sayfa yüklendikten sonra DOM'un hazır olması için bekleme.",
+            "default": 1.5,
+            "minimum": 0.5
+        },
+        "clearCheckpoint": {
+            "title": "Checkpoint'i Temizle (Baştan Başla)",
+            "type": "boolean",
+            "description": "True ise önceki çalışmadan kalan checkpoint silinir. Normalde false bırakın; kesintiden sonra kaldığı yerden devam eder.",
+            "default": false
+        },
+        "maxConcurrentChrome": {
+            "title": "Maks Eş Zamanlı Chrome Sayısı",
+            "type": "integer",
+            "description": "Aynı anda açık tutulabilecek Chrome instance üst sınırı. scrapeDetails=false: 30-50 güvenli. scrapeDetails=true: workers×2 ile otomatik sınırlandırılır.",
+            "default": 30,
+            "minimum": 5,
+            "maximum": 120
+        },
+        "useProxy": {
+            "title": "Residential Proxy Kullan",
+            "type": "boolean",
+            "description": "True ise Apify Residential proxy (TR) aktif olur. Bloklanma durumunda etkinleştirin. Ek maliyet oluşturur.",
+            "default": false
+        },
+        "scrapeDetails": {
+            "title": "Detay Sayfasını Tara",
+            "type": "boolean",
+            "description": "True ise her ilan için detay sayfası ziyaret edilir. Koordinat, JetFırsat, fiyat endeksi, bölge raporu ve yakın mekan (ulaşım, eğitim, market, kafe, sağlık) verilerini çeker. İlan başına ~2-3s ek süre ekler.",
+            "default": false
+        }
+    }
+}
+

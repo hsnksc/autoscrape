@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(while read:*)",
+      "Bash(do echo:*)",
+      "Bash(done)",
+      "WebFetch(domain:exa.ai)",
+      "WebFetch(domain:docs.exa.ai)",
+      "Bash(npm install:*)",
+      "Bash(node -c /e/autoscrape/src/orchestrator/index.js)",
+      "Bash(node -c /e/autoscrape/src/orchestrator/exa-searcher.js)",
+      "Bash(node -c /e/autoscrape/src/orchestrator/cache.js)",
+      "Bash(node -c /e/autoscrape/src/orchestrator/types.js)"
+    ]
+  }
+}

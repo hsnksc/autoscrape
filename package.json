@@ -1,0 +1,25 @@
+{
+  "name": "autoscrape",
+  "version": "1.0.0",
+  "description": "Universal Turkish real estate scraper with Search API aggregation, Apify-powered intelligent scraping, and anti-bot protection",
+  "main": "src/orchestrator/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/orchestrator/index.js",
+    "start": "node src/orchestrator/index.js",
+    "dev:client": "cd client && npm run dev",
+    "start:client": "cd client && npm start",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.0",
+    "ioredis": "^5.4.0",
+    "pino": "^9.1.0",
+    "uuid": "^10.0.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

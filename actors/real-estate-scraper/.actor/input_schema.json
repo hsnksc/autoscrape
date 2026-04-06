@@ -1,0 +1,65 @@
+{
+  "title": "Turkish Real Estate Scraper — Input",
+  "description": "Hangi portalların taranacağını ve scraping parametrelerini belirleyin.",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "sources": {
+      "title": "Kaynaklar",
+      "description": "Taranacak portal listesi: cb, century21, era, realtyworld, remax, turyap. Boş bırakılırsa tümü çalışır.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": ["cb", "century21", "era", "realtyworld", "remax", "turyap"],
+      "prefill": ["cb", "century21", "era", "realtyworld", "remax", "turyap"],
+      "editor": "stringList"
+    },
+    "maxPages": {
+      "title": "Sayfa Limiti",
+      "description": "Her kaynak için maksimum kategori sayfası sayısı. 0 = sınırsız.",
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "editor": "number"
+    },
+    "requestDelay": {
+      "title": "İstek Gecikmesi (saniye)",
+      "description": "İstekler arasındaki bekleme süresi. Site engellerini azaltır.",
+      "type": "number",
+      "minimum": 0.5,
+      "default": 1.5,
+      "editor": "number"
+    },
+    "headless": {
+      "title": "Headless Tarayıcı",
+      "description": "Selenium scraperları (Remax, Turyap) için headless mod. Apify'de her zaman true bırakın.",
+      "type": "boolean",
+      "default": true,
+      "editor": "checkbox"
+    },
+    "concurrency": {
+      "title": "Eşzamanlı Worker Sayısı",
+      "description": "HTTP scraperlar (CB, ERA, Century21, RealtyWorld) için her kaynaktaki paralel URL sayısı. Yüksek değerler daha hızlı ama site engellemesi riskini artırır.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 32,
+      "default": 8,
+      "editor": "number"
+    },
+    "proxyConfiguration": {
+      "title": "Proxy Yapılandırması (Remax için)",
+      "description": "Remax.com.tr Cloudflare korumasını aşmak için proxy ayarı. Boş bırakılırsa proxy kullanılmaz (Remax'ta CF engeli çıkabilir). Apify Residential Proxy veya harici proxy ile bypass yapılabilir.",
+      "type": "object",
+      "editor": "proxy",
+      "default": {}
+    },
+    "remaxCookies": {
+      "title": "Remax Cookie (EditThisCookie JSON)",
+      "description": "remax.com.tr'yi tarayıcınızda açın, EditThisCookie ile tüm çerezleri kopyalayın (‘Export’ düğmesi) ve buraya yapıştırın. cf_clearance çerezi Cloudflare engeli geçmeyi sağlar. Çerez yaklaşık 30 dakika geçerlidir.",
+      "type": "string",
+      "editor": "textarea",
+      "default": ""
+    }
+  }
+}

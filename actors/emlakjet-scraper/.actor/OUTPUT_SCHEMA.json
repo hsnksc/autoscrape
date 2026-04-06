@@ -1,0 +1,211 @@
+{
+    "actorOutputSchemaVersion": 1,
+    "title": "Emlakjet İlan Verileri",
+    "description": "Emlakjet.com'dan çekilen satılık/kiralık ilan bilgileri",
+    "properties": {
+        "url": {
+            "title": "İlan URL",
+            "type": "string",
+            "description": "İlanın emlakjet.com üzerindeki tam URL adresi",
+            "template": "<a href=\"{{{url}}}\">{{{url}}}</a>"
+        },
+        "listing_id": {
+            "title": "İlan ID",
+            "type": "string",
+            "description": "Emlakjet iç ilan kimliği",
+            "template": "{{{listing_id}}}"
+        },
+        "title": {
+            "title": "İlan Başlığı",
+            "type": "string",
+            "description": "İlanın başlığı",
+            "template": "{{{title}}}"
+        },
+        "location": {
+            "title": "Konum (Ham)",
+            "type": "string",
+            "description": "İlan kartındaki konum metni",
+            "template": "{{{location}}}"
+        },
+        "district": {
+            "title": "İlçe",
+            "type": "string",
+            "description": "Mülkün bulunduğu ilçe",
+            "template": "{{{district}}}"
+        },
+        "neighborhood": {
+            "title": "Mahalle",
+            "type": "string",
+            "description": "Mülkün bulunduğu mahalle",
+            "template": "{{{neighborhood}}}"
+        },
+        "city": {
+            "title": "Şehir / İl",
+            "type": "string",
+            "description": "Mülkün bulunduğu şehir veya il",
+            "template": "{{{city}}}"
+        },
+        "lat": {
+            "title": "Enlem (Latitude)",
+            "type": "string",
+            "description": "Mülkün enlem koordinatı (sayfa __NEXT_DATA__'sından)",
+            "template": "{{{lat}}}"
+        },
+        "lon": {
+            "title": "Boylam (Longitude)",
+            "type": "string",
+            "description": "Mülkün boylam koordinatı (sayfa __NEXT_DATA__'sından)",
+            "template": "{{{lon}}}"
+        },
+        "category": {
+            "title": "Kategori",
+            "type": "string",
+            "description": "İlan kategorisi (konut, işyeri, arsa vb.)",
+            "template": "{{{category}}}"
+        },
+        "trade_type": {
+            "title": "İşlem Türü",
+            "type": "string",
+            "description": "İşlem türü (satılık veya kiralık)",
+            "template": "{{{trade_type}}}"
+        },
+        "price": {
+            "title": "Fiyat",
+            "type": "string",
+            "description": "Mülkün satış veya kira fiyatı",
+            "template": "{{{price}}}"
+        },
+        "currency": {
+            "title": "Para Birimi",
+            "type": "string",
+            "description": "Fiyatın para birimi (TL, USD, EUR vb.)",
+            "template": "{{{currency}}}"
+        },
+        "prev_price": {
+            "title": "Önceki Fiyat",
+            "type": "string",
+            "description": "İndirimden önceki fiyat (varsa)",
+            "template": "{{{prev_price}}}"
+        },
+        "room_count": {
+            "title": "Oda Sayısı",
+            "type": "string",
+            "description": "Oda sayısı (örn. 3+1)",
+            "template": "{{{room_count}}}"
+        },
+        "floor": {
+            "title": "Kat",
+            "type": "string",
+            "description": "Mülkün bulunduğu kat",
+            "template": "{{{floor}}}"
+        },
+        "gross_sqm": {
+            "title": "Alan (m²)",
+            "type": "string",
+            "description": "Mülkün metrekare alanı",
+            "template": "{{{gross_sqm}}}"
+        },
+        "estate_type": {
+            "title": "Emlak Tipi",
+            "type": "string",
+            "description": "Emlak tipi (daire, villa, arsa vb.)",
+            "template": "{{{estate_type}}}"
+        },
+        "quick_infos": {
+            "title": "Hızlı Bilgiler",
+            "type": "string",
+            "description": "İlan kartındaki özet bilgiler",
+            "template": "{{{quick_infos}}}"
+        },
+        "image_url": {
+            "title": "Görsel URL",
+            "type": "string",
+            "description": "İlanın kapak fotoğrafı URL'i",
+            "template": "<img src=\"{{{image_url}}}\" style=\"max-height:80px\">"
+        },
+        "scraped_at_utc": {
+            "title": "Çekilme Zamanı (UTC)",
+            "type": "string",
+            "description": "Verinin çekildiği UTC zaman damgası (ISO 8601)",
+            "template": "{{{scraped_at_utc}}}"
+        },
+        "is_jet_firsat": {
+            "title": "JetFırsat",
+            "type": "string",
+            "description": "Emsallerine göre avantajlı fiyatlı ilan (true/false)",
+            "template": "{{{is_jet_firsat}}}"
+        },
+        "price_est_min": {
+            "title": "Tahmini Min Fiyat",
+            "type": "string",
+            "description": "Yapay zeka fiyat tahmininin alt sınırı",
+            "template": "{{{price_est_min}}}"
+        },
+        "price_est_max": {
+            "title": "Tahmini Maks Fiyat",
+            "type": "string",
+            "description": "Yapay zeka fiyat tahmininin üst sınırı",
+            "template": "{{{price_est_max}}}"
+        },
+        "price_discount_pct": {
+            "title": "Fiyat Avantajı (%)",
+            "type": "string",
+            "description": "Tahmini fiyata göre yüzde ucuzluk (\u00f6rn. %39)",
+            "template": "{{{price_discount_pct}}}"
+        },
+        "region_avg_rental": {
+            "title": "Bölge Ort. Kiralık Fiyat",
+            "type": "string",
+            "description": "Mahalle/bölgedeki ortalama kiralık fiyat",
+            "template": "{{{region_avg_rental}}}"
+        },
+        "region_avg_sale": {
+            "title": "Bölge Ort. Satılık Fiyat",
+            "type": "string",
+            "description": "Mahalle/bölgedeki ortalama satılık fiyat",
+            "template": "{{{region_avg_sale}}}"
+        },
+        "region_return_years": {
+            "title": "Geri Dönüş Süresi (Yıl)",
+            "type": "string",
+            "description": "Bölgedeki ortalama yatırım geri dönüş süresi",
+            "template": "{{{region_return_years}}}"
+        },
+        "region_value_change_1y": {
+            "title": "1 Yıllık Değer Değişimi",
+            "type": "string",
+            "description": "Bölge emlak fiyatlarının son 1 yıldaki değişim yüzdeleri",
+            "template": "{{{region_value_change_1y}}}"
+        },
+        "transport_nearby": {
+            "title": "Yakın Ulaşım",
+            "type": "string",
+            "description": "Yakındaki ulaşım noktaları (JSON: [{name, distance}])",
+            "template": "{{{transport_nearby}}}"
+        },
+        "education_nearby": {
+            "title": "Yakın Eğitim Kurumları",
+            "type": "string",
+            "description": "Yakındaki okullar ve eğitim kurumları (JSON: [{name, distance}])",
+            "template": "{{{education_nearby}}}"
+        },
+        "market_nearby": {
+            "title": "Yakın Marketler",
+            "type": "string",
+            "description": "Yakındaki marketler (JSON: [{name, distance}])",
+            "template": "{{{market_nearby}}}"
+        },
+        "cafe_restaurant_nearby": {
+            "title": "Yakın Kafe/Restoran",
+            "type": "string",
+            "description": "Yakındaki kafe ve restoranlar (JSON: [{name, distance}])",
+            "template": "{{{cafe_restaurant_nearby}}}"
+        },
+        "health_nearby": {
+            "title": "Yakın Sağlık Kurumları",
+            "type": "string",
+            "description": "Yakındaki eczane, klinik ve hastaneler (JSON: [{name, distance}])",
+            "template": "{{{health_nearby}}}"
+        }
+    }
+}

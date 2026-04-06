@@ -1,0 +1,20 @@
+{
+  "actorSpecification": 1,
+  "name": "turkish-real-estate-scraper",
+  "title": "Turkish Real Estate Portal Scraper (CB, C21, ERA, RealtyWorld, Remax, Turyap)",
+  "description": "Scrapes all property listings from 6 major Turkish real estate portals: CB.com.tr, Century21.com.tr, ERA.com.tr, RealtyWorld.com.tr, Remax.com.tr and Turyap.com.tr. Supports resume via checkpoints. Outputs normalized JSON with price, location, coordinates and full property details.",
+  "version": "1.0",
+  "buildTag": "latest",
+  "dockerfile": "../Dockerfile",
+  "input": "./input_schema.json",
+  "output": "./output_schema.json",
+  "storages": {
+    "dataset": "./dataset_schema.json"
+  },
+  "defaultRunOptions": {
+    "memoryMbytes": 8192,
+    "timeoutSecs": 86400
+  },
+  "categories": ["ECOMMERCE", "LEAD_GENERATION"],
+  "notice": "This actor requires a paid subscription. See pricing below."
+}

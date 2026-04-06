@@ -1,0 +1,133 @@
+{
+    "actorOutputSchemaVersion": 1,
+    "title": "Sahibinden İlan Verileri",
+    "description": "Sahibinden.com'dan çekilen satılık/kiralık ilan bilgileri",
+    "properties": {
+        "url": {
+            "title": "İlan URL",
+            "type": "string",
+            "description": "İlanın sahibinden.com üzerindeki tam URL adresi",
+            "template": "<a href=\"{{{url}}}\">{{{url}}}</a>"
+        },
+        "listing_id": {
+            "title": "İlan ID",
+            "type": "string",
+            "description": "Sahibinden iç ilan kimliği",
+            "template": "{{{listing_id}}}"
+        },
+        "title": {
+            "title": "İlan Başlığı",
+            "type": "string",
+            "description": "İlanın başlığı",
+            "template": "{{{title}}}"
+        },
+        "category": {
+            "title": "Kategori",
+            "type": "string",
+            "description": "İlan kategorisi (satilik veya kiralik)",
+            "template": "{{{category}}}"
+        },
+        "property_type": {
+            "title": "Mülk Türü",
+            "type": "string",
+            "description": "Mülk türü (konut, işyeri vb.)",
+            "template": "{{{property_type}}}"
+        },
+        "advertiser_type": {
+            "title": "İlan Sahibi Tipi",
+            "type": "string",
+            "description": "İlan sahibinin tipi (bireysel, kurumsal vb.)",
+            "template": "{{{advertiser_type}}}"
+        },
+        "advertiser_name": {
+            "title": "İlan Sahibi Adı",
+            "type": "string",
+            "description": "İlanı yayınlayan kişi veya kurum adı",
+            "template": "{{{advertiser_name}}}"
+        },
+        "city": {
+            "title": "İl",
+            "type": "string",
+            "description": "Mülkün bulunduğu il",
+            "template": "{{{city}}}"
+        },
+        "county": {
+            "title": "İlçe",
+            "type": "string",
+            "description": "Mülkün bulunduğu ilçe",
+            "template": "{{{county}}}"
+        },
+        "district": {
+            "title": "Mahalle",
+            "type": "string",
+            "description": "Mülkün bulunduğu mahalle",
+            "template": "{{{district}}}"
+        },
+        "price": {
+            "title": "Fiyat",
+            "type": "string",
+            "description": "Mülkün satış veya kira fiyatı",
+            "template": "{{{price}}}"
+        },
+        "currency": {
+            "title": "Para Birimi",
+            "type": "string",
+            "description": "Fiyatın para birimi (TL, USD, EUR vb.)",
+            "template": "{{{currency}}}"
+        },
+        "gross_sqm": {
+            "title": "Brüt m²",
+            "type": "string",
+            "description": "Mülkün brüt metrekare alanı",
+            "template": "{{{gross_sqm}}}"
+        },
+        "net_sqm": {
+            "title": "Net m²",
+            "type": "string",
+            "description": "Mülkün net metrekare alanı",
+            "template": "{{{net_sqm}}}"
+        },
+        "room_count": {
+            "title": "Oda Sayısı",
+            "type": "string",
+            "description": "Oda sayısı (örn. 3+1)",
+            "template": "{{{room_count}}}"
+        },
+        "floor": {
+            "title": "Bulunduğu Kat",
+            "type": "string",
+            "description": "Mülkün bulunduğu kat",
+            "template": "{{{floor}}}"
+        },
+        "floor_count": {
+            "title": "Toplam Kat",
+            "type": "string",
+            "description": "Binadaki toplam kat sayısı",
+            "template": "{{{floor_count}}}"
+        },
+        "building_age": {
+            "title": "Bina Yaşı",
+            "type": "string",
+            "description": "Binanın yaşı veya yapım yılı",
+            "template": "{{{building_age}}}"
+        },
+        "listing_date": {
+            "title": "İlan Tarihi",
+            "type": "string",
+            "description": "İlanın yayınlanma tarihi",
+            "template": "{{{listing_date}}}"
+        },
+        "image_count": {
+            "title": "Fotoğraf Sayısı",
+            "type": "string",
+            "description": "İlandaki fotoğraf sayısı",
+            "template": "{{{image_count}}}"
+        },
+        "scraped_at_utc": {
+            "title": "Çekilme Zamanı (UTC)",
+            "type": "string",
+            "description": "Verinin çekildiği UTC zaman damgası (ISO 8601)",
+            "template": "{{{scraped_at_utc}}}"
+        }
+    }
+}

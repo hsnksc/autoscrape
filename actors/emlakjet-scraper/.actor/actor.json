@@ -1,0 +1,16 @@
+{
+    "actorSpecification": 1,
+    "name": "emlakjet-scraper",
+    "title": "Emlakjet Scraper",
+    "description": "Emlakjet.com'dan satılık/kiralık konut, işyeri ve arsa ilanlarını Selenium ile çeker.",
+    "version": "0.1",
+    "buildTag": "latest",
+    "dockerfile": "../Dockerfile",
+    "input": "./INPUT_SCHEMA.json",
+    "output": "./OUTPUT_SCHEMA.json",
+    "defaultRunOptions": {
+        "build": "latest",
+        "memoryMbytes": 16384,
+        "timeoutSecs": 7200
+    }
+}

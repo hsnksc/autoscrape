@@ -1,0 +1,14 @@
+{
+    "actorSpecification": 1,
+    "name": "hepsiemlak-scraper",
+    "title": "Hepsiemlak Scraper",
+    "description": "Hepsiemlak.com'dan satılık/kiralık konut ve işyeri ilanlarını Selenium ile çeker. Nuxt state üzerinden veri alır.",
+    "version": "0.1",
+    "buildTag": "latest",
+    "dockerfile": "../Dockerfile",
+    "input": "./INPUT_SCHEMA.json",
+    "output": "./OUTPUT_SCHEMA.json",
+    "defaultRunOptions": {
+        "memoryMbytes": 8192
+    }
+}

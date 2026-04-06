@@ -1,0 +1,10 @@
+{
+  "actorSpecification": 1,
+  "name": "unified-real-estate-scraper",
+  "title": "Unified Turkish Real Estate Scraper",
+  "description": "Tek aktör — sahibinden, hepsiemlak, emlakjet, zingat, hurriyetemlak ilan detay sayfalarını scrape eder. AutoScrape tarafından çağrılır.",
+  "version": "1.0",
+  "buildTag": "latest",
+  "dockerfile": "./Dockerfile",
+  "dockerContextDir": ".."
+}

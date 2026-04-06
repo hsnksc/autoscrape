@@ -1,0 +1,4 @@
+camoufox[geoip]
+beautifulsoup4>=4.12
+lxml>=5.0
+apify>=2.3

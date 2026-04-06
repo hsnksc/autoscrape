@@ -1,0 +1,61 @@
+{
+    "title": "Hepsiemlak Scraper - Girdi Parametreleri",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "categories": {
+            "title": "Kategoriler",
+            "type": "array",
+            "description": "Scrape edilecek kategoriler. Seçenekler: satilik, kiralik, satilik_isyeri, kiralik_isyeri",
+            "items": {
+                "type": "string"
+            },
+            "default": ["satilik", "kiralik"],
+            "editor": "json"
+        },
+        "mode": {
+            "title": "Çalışma Modu",
+            "type": "string",
+            "description": "list_only = sadece liste sayfasından veri çek (hızlı). full = tüm detay sayfalarını da aç (yavaş ama eksiksiz).",
+            "enum": ["list_only", "full"],
+            "default": "list_only"
+        },
+        "maxPages": {
+            "title": "Maksimum Sayfa Sayısı",
+            "type": "integer",
+            "description": "Her kategoride en fazla kaç sayfa işlensin. 0 = sınırsız.",
+            "default": 0,
+            "minimum": 0
+        },
+        "pageWorkers": {
+            "title": "Sayfa Worker Sayısı",
+            "type": "integer",
+            "description": "Paralel sayfa toplama thread sayısı.",
+            "default": 4,
+            "minimum": 1,
+            "maximum": 10
+        },
+        "detailWorkers": {
+            "title": "Detay Worker Sayısı",
+            "type": "integer",
+            "description": "Detay sayfası thread sayısı (sadece full modda geçerli).",
+            "default": 2,
+            "minimum": 1,
+            "maximum": 8
+        },
+        "delay": {
+            "title": "İstek Gecikmesi (saniye)",
+            "type": "number",
+            "description": "Her HTTP isteği arasındaki bekleme süresi (saniye).",
+            "default": 1.5,
+            "minimum": 0.5
+        },
+        "proxyConfiguration": {
+            "title": "Proxy Yapılandırması",
+            "type": "object",
+            "description": "Apify proxy veya özel proxy. Boş bırakılırsa proxy kullanılmaz. Hepsiemlak datacenter IP engelleyebilir; residential proxy önerilir.",
+            "editor": "proxy",
+            "default": {}
+        }
+    }
+}

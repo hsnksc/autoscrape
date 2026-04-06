@@ -1,0 +1,25 @@
+node_modules/
+.env
+dist/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Apify local storage
+apify_storage/
+storage/
+
+# Dataset çıktıları (büyük JSON dosyaları)
+actors/**/dataset_*.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+

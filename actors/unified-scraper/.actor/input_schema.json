@@ -1,0 +1,51 @@
+{
+  "title": "Unified Scraper — Input",
+  "type": "object",
+  "schemaVersion": 1,
+  "properties": {
+    "urls": {
+      "title": "İlan URL Listesi",
+      "type": "array",
+      "description": "Scrape edilecek ilan URL'leri. sahibinden.com, hepsiemlak.com, emlakjet.com, zingat.com, hurriyetemlak.com desteklenir.",
+      "items": { "type": "string" },
+      "editor": "json"
+    },
+    "webhookUrl": {
+      "title": "Webhook URL",
+      "type": "string",
+      "description": "Tüm ilanlar scrape edildikten sonra sonuçların POST edileceği AutoScrape backend URL'i.",
+      "editor": "textfield"
+    },
+    "jobId": {
+      "title": "Job ID",
+      "type": "string",
+      "description": "AutoScrape'den gelen job ID — webhook payload'ına eklenir.",
+      "editor": "textfield"
+    },
+    "sahibindenCookies": {
+      "title": "Sahibinden Session Cookies (JSON)",
+      "type": "string",
+      "description": "CF bypass için EditThisCookie JSON formatında çerezler.",
+      "editor": "textarea",
+      "default": ""
+    },
+    "concurrency": {
+      "title": "Eşzamanlı Worker Sayısı",
+      "type": "integer",
+      "description": "Aynı anda kaç URL scrape edilsin.",
+      "default": 3,
+      "minimum": 1,
+      "maximum": 8,
+      "editor": "number"
+    },
+    "requestDelay": {
+      "title": "İstek Gecikmesi (saniye)",
+      "type": "number",
+      "description": "Her scrape işlemi arasındaki bekleme.",
+      "default": 1.5,
+      "minimum": 0.5,
+      "editor": "number"
+    }
+  },
+  "required": ["urls"]
+}

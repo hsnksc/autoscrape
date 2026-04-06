@@ -1,0 +1,61 @@
+{
+  "$schema": "https://apify.com/schemas/v1/dataset.ide.json",
+  "actorSpecification": 1,
+  "fields": {},
+  "views": {
+    "overview": {
+      "title": "Property Listings",
+      "transformation": {
+        "fields": [
+          "source",
+          "url",
+          "title",
+          "listing_no",
+          "transaction_type",
+          "property_type",
+          "price",
+          "currency",
+          "location",
+          "district",
+          "neighborhood",
+          "m2_net",
+          "m2_brut",
+          "room_count",
+          "floor",
+          "total_floors",
+          "build_year",
+          "heating",
+          "latitude",
+          "longitude",
+          "scraped_at_utc"
+        ]
+      },
+      "display": {
+        "component": "table",
+        "properties": {
+          "source":           { "label": "Source",         "format": "text" },
+          "url":              { "label": "URL",            "format": "link" },
+          "title":            { "label": "Title",          "format": "text" },
+          "listing_no":       { "label": "Listing No",     "format": "text" },
+          "transaction_type": { "label": "Transaction",    "format": "text" },
+          "property_type":    { "label": "Type",           "format": "text" },
+          "price":            { "label": "Price",          "format": "text" },
+          "currency":         { "label": "Currency",       "format": "text" },
+          "location":         { "label": "City",           "format": "text" },
+          "district":         { "label": "District",       "format": "text" },
+          "neighborhood":     { "label": "Neighborhood",   "format": "text" },
+          "m2_net":           { "label": "Net m²",         "format": "text" },
+          "m2_brut":          { "label": "Gross m²",       "format": "text" },
+          "room_count":       { "label": "Rooms",          "format": "text" },
+          "floor":            { "label": "Floor",          "format": "text" },
+          "total_floors":     { "label": "Total Floors",   "format": "text" },
+          "build_year":       { "label": "Build Year",     "format": "text" },
+          "heating":          { "label": "Heating",        "format": "text" },
+          "latitude":         { "label": "Lat",            "format": "text" },
+          "longitude":        { "label": "Lng",            "format": "text" },
+          "scraped_at_utc":   { "label": "Scraped At",     "format": "text" }
+        }
+      }
+    }
+  }
+}

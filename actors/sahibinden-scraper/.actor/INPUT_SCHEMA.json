@@ -1,0 +1,59 @@
+{
+    "title": "Sahibinden Scraper - Girdi Parametreleri",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "categories": {
+            "title": "Kategoriler",
+            "type": "array",
+            "description": "Scrape edilecek kategoriler. Geçerli değerler: satilik, kiralik, satilik_isyeri, kiralik_isyeri, devren_satilik_isyeri, devren_kiralik_isyeri",
+            "items": {
+                "type": "string"
+            },
+            "default": ["satilik", "kiralik"],
+            "editor": "stringList"
+        },
+        "pageWorkers": {
+            "title": "Sayfa Worker Sayısı",
+            "type": "integer",
+            "description": "Paralel sayfa worker sayısı. Cloudflare engeli nedeniyle 1 önerilir.",
+            "default": 1,
+            "minimum": 1,
+            "maximum": 3
+        },
+        "delay": {
+            "title": "İstek Gecikmesi (saniye)",
+            "type": "number",
+            "description": "İstekler arası bekleme. Cloudflare bypass için en az 2.0 önerilir.",
+            "default": 3.0,
+            "minimum": 1.5
+        },
+        "pageRanges": {
+            "title": "Sayfa Aralıkları",
+            "type": "string",
+            "description": "Opsiyonel sayfa aralıkları. Örnek: '1-50' veya '1-25,26-50'. Boş = tüm sayfalar.",
+            "default": "",
+            "editor": "textfield"
+        },
+        "scrapeDetails": {
+            "title": "Detay Sayfalarını Çek",
+            "type": "boolean",
+            "description": "true ise önce liste sayfalarından URL toplar, sonra her ilanın detay sayfasını ziyaret ederek net m², kat, bina yaşı, ilan sahibi vb. ek bilgileri çeker. false ise sadece liste verisi toplar.",
+            "default": true
+        },
+        "proxyConfiguration": {
+            "title": "Proxy Yapılandırması",
+            "type": "object",
+            "description": "Apify proxy veya özel proxy. Cloudflare bypass için residential proxy şiddetle önerilir.",
+            "editor": "proxy",
+            "default": {}
+        },
+        "sessionCookies": {
+            "title": "Session Cookies (JSON)",
+            "type": "string",
+            "description": "Sahibinden.com oturum çerezleri (EditThisCookie JSON formatı). Gerçek tarayıcıdan export edilmiş çerezler CF/login engelini aşmak için ZORUNLUDUR. EditThisCookie eklentisi ile export edin ve buraya yapıştırın.",
+            "editor": "textarea",
+            "default": ""
+        }
+    }
+}

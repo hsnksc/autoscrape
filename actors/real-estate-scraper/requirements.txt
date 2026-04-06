@@ -1,0 +1,6 @@
+apify>=2.0.0
+selenium>=4.25.0
+undetected-chromedriver>=3.5.5
+PyVirtualDisplay>=3.0
+curl-cffi>=0.7.0
+cloudscraper
