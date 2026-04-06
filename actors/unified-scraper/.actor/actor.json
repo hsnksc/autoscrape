@@ -5,6 +5,5 @@
   "description": "Tek aktör — sahibinden, hepsiemlak, emlakjet, zingat, hurriyetemlak ilan detay sayfalarını scrape eder. AutoScrape tarafından çağrılır.",
   "version": "1.0",
   "buildTag": "latest",
-  "dockerfile": "./Dockerfile",
-  "dockerContextDir": ".."
+  "dockerfile": "./Dockerfile"
 }
