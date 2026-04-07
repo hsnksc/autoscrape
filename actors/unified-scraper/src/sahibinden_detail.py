@@ -1,7 +1,7 @@
 """
 sahibinden_detail.py — Sahibinden.com tekil ilan URL scraper.
 
-requests + BeautifulSoup HTML parse — Playwright/Camoufox yok, hizli.
+cloudscraper + BeautifulSoup HTML parse — Playwright/Camoufox yok.
 Not: Sahibinden.com bot-korumasina sahiptir; cookies verilmezse 403 donebilir.
 """
 from __future__ import annotations
@@ -11,6 +11,11 @@ import re
 from typing import Optional
 
 import requests
+try:
+    import cloudscraper as _cloudscraper
+    _HAS_CLOUDSCRAPER = True
+except ImportError:
+    _HAS_CLOUDSCRAPER = False
 from bs4 import BeautifulSoup
 
 _HEADERS = {
@@ -25,7 +30,37 @@ _HEADERS = {
 }
 
 
-def _fetch_html(url: str, cookies: list, timeout: int = 15) -> str:
+def _fetch_html(url: str, cookies: list, proxy_url: Optional[str] = None, timeout: int = 20) -> str:
+    proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
+    # İlk deneme: Playwright (Cloudflare bypass en güvenilir)
+    try:
+        import playwright_fetch
+        html = playwright_fetch.fetch_sync(url, proxy_url=proxy_url, timeout_ms=30_000)
+        if html:
+            return html
+        print(f"[SAHIBINDEN] Playwright boş döndü: {url[:60]}")
+    except ImportError:
+        pass
+    except Exception as exc:
+        print(f"[SAHIBINDEN] Playwright hatası ({url[:60]}): {exc}")
+    # İkinci deneme: cloudscraper
+    if _HAS_CLOUDSCRAPER:
+        try:
+            scraper = _cloudscraper.create_scraper(browser={"browser": "chrome", "platform": "windows"})
+            scraper.headers.update(_HEADERS)
+            if cookies:
+                for ck in cookies:
+                    if isinstance(ck, dict) and ck.get("name"):
+                        scraper.cookies.set(ck["name"], ck.get("value", ""))
+            if proxies:
+                scraper.proxies = proxies
+            resp = scraper.get(url, timeout=timeout, allow_redirects=True)
+            if resp.status_code == 200 and len(resp.text) > 1000:
+                return resp.text
+            print(f"[SAHIBINDEN] cloudscraper {resp.status_code} ({url[:60]})")
+        except Exception as exc:
+            print(f"[SAHIBINDEN] cloudscraper hatasi ({url[:60]}): {exc}")
+    # Fallback: plain requests
     try:
         session = requests.Session()
         session.headers.update(_HEADERS)
@@ -33,6 +68,8 @@ def _fetch_html(url: str, cookies: list, timeout: int = 15) -> str:
             for ck in cookies:
                 if isinstance(ck, dict) and ck.get("name"):
                     session.cookies.set(ck["name"], ck.get("value", ""))
+        if proxies:
+            session.proxies = proxies
         resp = session.get(url, timeout=timeout, allow_redirects=True)
         if resp.status_code in (403, 429, 503):
             print(f"[SAHIBINDEN] HTTP {resp.status_code} — bot korumasi")
@@ -41,6 +78,20 @@ def _fetch_html(url: str, cookies: list, timeout: int = 15) -> str:
     except Exception as exc:
         print(f"[SAHIBINDEN] Fetch hatasi ({url[:70]}): {exc}")
         return ""
+
+
+def extract_listing_urls(html: str) -> list[str]:
+    """Sahibinden arama sayfasından ilan detay URL'lerini çıkar."""
+    # /ilan/emlak-...-XXXXXXXXXXX formatındaki detail URL'leri
+    pattern = re.compile(r'href="(/ilan/[^"?#\s]+)"')
+    urls: list[str] = []
+    seen: set = set()
+    for path in pattern.findall(html):
+        full = "https://www.sahibinden.com" + path
+        if full not in seen:
+            seen.add(full)
+            urls.append(full)
+    return urls
 
 
 def _parse_detail(soup: BeautifulSoup, url: str) -> dict:
@@ -139,9 +190,9 @@ def _parse_detail(soup: BeautifulSoup, url: str) -> dict:
     return result
 
 
-def scrape_url(url: str, cookies: Optional[list] = None) -> Optional[dict]:
+def scrape_url(url: str, cookies: Optional[list] = None, proxy_url: Optional[str] = None) -> Optional[dict]:
     """Sahibinden.com ilan detay URL'sini scrape et. dict veya None doner."""
-    html = _fetch_html(url, cookies or [])
+    html = _fetch_html(url, cookies or [], proxy_url=proxy_url)
     if not html or len(html) < 500:
         return None
 

@@ -29,7 +29,7 @@ export class Geocoder {
   async reverseGeocode(lat, lng) {
     if (!this.#apiKey) {
       this.#logger?.warn('GOOGLE_MAPS_API_KEY eksik — koordinat ham olarak kullanılacak');
-      return `${lat},${lng}`;
+      return { location: `${lat},${lng}`, district: '' };
     }
 
     const url = `${GEOCODE_URL}?latlng=${lat},${lng}&language=tr&key=${this.#apiKey}`;
@@ -42,15 +42,15 @@ export class Geocoder {
 
       if (data.status !== 'OK' || !data.results?.length) {
         this.#logger?.warn({ status: data.status }, 'Geocode sonuç yok');
-        return `${lat},${lng}`;
+        return { location: `${lat},${lng}`, district: '' };
       }
 
-      const location = this.#extractLocation(data.results);
-      this.#logger?.info({ lat, lng, location }, 'Geocode OK');
-      return location;
+      const result = this.#extractLocation(data.results);
+      this.#logger?.info({ lat, lng, location: result.location }, 'Geocode OK');
+      return result;
     } catch (err) {
       this.#logger?.error({ err }, 'Geocode hatası');
-      return `${lat},${lng}`;
+      return { location: `${lat},${lng}`, district: '' };
     }
   }
 
@@ -73,8 +73,10 @@ export class Geocoder {
       .filter(Boolean);
 
     // Fallback: sadece şehir varsa onu kullan
-    if (!parts.length) return city || results[0]?.formatted_address || '';
+    const locationStr = parts.length
+      ? parts.join(', ')
+      : (city || results[0]?.formatted_address || '');
 
-    return parts.join(', ');
+    return { location: locationStr, district };
   }
 }

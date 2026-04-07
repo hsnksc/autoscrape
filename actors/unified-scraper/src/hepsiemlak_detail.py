@@ -1,7 +1,7 @@
 """
 hepsiemlak_detail.py — Hepsiemlak.com tekil ilan URL scraper.
 
-requests + BeautifulSoup + API JSON cikartma — Selenium yok, hizli.
+cloudscraper + BeautifulSoup + API JSON cikartma — Selenium yok, hizli.
 """
 from __future__ import annotations
 
@@ -10,6 +10,11 @@ import re
 from typing import Optional
 
 import requests
+try:
+    import cloudscraper as _cloudscraper
+    _HAS_CLOUDSCRAPER = True
+except ImportError:
+    _HAS_CLOUDSCRAPER = False
 from bs4 import BeautifulSoup
 
 _HEADERS = {
@@ -23,19 +28,78 @@ _HEADERS = {
     "Referer": "https://www.hepsiemlak.com/",
 }
 
-_SESSION = requests.Session()
-_SESSION.headers.update(_HEADERS)
 
-
-def _fetch_html(url: str, timeout: int = 15) -> str:
+def _fetch_html(url: str, proxy_url: Optional[str] = None, timeout: int = 20) -> str:
+    proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
+    # İlk deneme: Playwright (Cloudflare bypass en güvenilir)
     try:
-        resp = _SESSION.get(url, timeout=timeout, allow_redirects=True)
+        import playwright_fetch
+        html = playwright_fetch.fetch_sync(url, proxy_url=proxy_url, timeout_ms=30_000)
+        if html:
+            return html
+        print(f"[HEPSIEMLAK] Playwright boş döndü, cloudscraper deneniyor: {url[:60]}")
+    except ImportError:
+        pass
+    except Exception as exc:
+        print(f"[HEPSIEMLAK] Playwright hatası ({url[:60]}): {exc}")
+    # İkinci deneme: cloudscraper
+    if _HAS_CLOUDSCRAPER:
+        try:
+            scraper = _cloudscraper.create_scraper(browser={"browser": "chrome", "platform": "windows"})
+            scraper.headers.update(_HEADERS)
+            if proxies:
+                scraper.proxies = proxies
+            resp = scraper.get(url, timeout=timeout, allow_redirects=True)
+            if resp.status_code == 200 and len(resp.text) > 1000:
+                return resp.text
+            print(f"[HEPSIEMLAK] cloudscraper {resp.status_code} ({url[:60]})")
+        except Exception as exc:
+            print(f"[HEPSIEMLAK] cloudscraper hatasi ({url[:60]}): {exc}")
+    # Fallback: plain requests
+    try:
+        session = requests.Session()
+        session.headers.update(_HEADERS)
+        if proxies:
+            session.proxies = proxies
+        resp = session.get(url, timeout=timeout, allow_redirects=True)
         if resp.status_code in (403, 429, 503):
+            print(f"[HEPSIEMLAK] HTTP {resp.status_code} — bot korumasi: {url[:60]}")
             return ""
         return resp.text
     except Exception as exc:
         print(f"[HEPSIEMLAK] Fetch hatasi ({url[:70]}): {exc}")
         return ""
+
+
+def extract_listing_urls(html: str) -> list[str]:
+    """Hepsiemlak arama sayfasından ilan detay URL'lerini çıkar."""
+    urls: list[str] = []
+    seen: set = set()
+
+    # Absolute URL pattern: https://www.hepsiemlak.com/ilan/...
+    for m in re.finditer(r'href="(https://(?:www\.)?hepsiemlak\.com/ilan/[^"?#]+)"', html):
+        u = m.group(1)
+        if u not in seen:
+            seen.add(u)
+            urls.append(u)
+
+    # Relative URL pattern: /ilan/...
+    for m in re.finditer(r'href="(/ilan/[^"?#]+)"', html):
+        full = "https://www.hepsiemlak.com" + m.group(1)
+        if full not in seen:
+            seen.add(full)
+            urls.append(full)
+
+    # JSON içinde gömülü URL'ler (SPA / __NEXT_DATA__ / Nuxt store)
+    for m in re.finditer(r'"(?:url|link|href|detailUrl)"\s*:\s*"((?:https://(?:www\.)?hepsiemlak\.com)?/ilan/[^"]+)"', html):
+        u = m.group(1)
+        if not u.startswith("http"):
+            u = "https://www.hepsiemlak.com" + u
+        if u not in seen:
+            seen.add(u)
+            urls.append(u)
+
+    return urls
 
 
 def _extract_nuxt(html: str) -> dict:
@@ -161,9 +225,9 @@ def _parse_soup(soup: BeautifulSoup, url: str) -> dict:
     return result
 
 
-def scrape_url(url: str) -> Optional[dict]:
+def scrape_url(url: str, proxy_url: Optional[str] = None) -> Optional[dict]:
     """Hepsiemlak.com ilan detay URL'sini scrape et. dict veya None doner."""
-    html = _fetch_html(url)
+    html = _fetch_html(url, proxy_url=proxy_url)
     if not html or len(html) < 500:
         return None
 

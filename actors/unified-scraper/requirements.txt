@@ -2,3 +2,6 @@ apify>=2.3
 beautifulsoup4>=4.12
 lxml>=5.0
 requests>=2.31
+cloudscraper>=1.2
+playwright>=1.44
+playwright-stealth>=1.0

@@ -10,16 +10,22 @@
 const EXA_SEARCH = 'https://api.exa.ai/search';
 const EXA_CONTENTS = 'https://api.exa.ai/contents';
 
-const EMARKA_DOMAINS = [
-  'sahibinden.com',
-  'hepsiemlak.com',
+// Ana portaller — tek büyük sorguda iyi sonuç veriyorlar
+const PORTAL_DOMAINS = [
   'emlakjet.com',
   'zingat.com',
+];
+
+// Per-domain sorgular — her biri için 10'ar sonuç (portal sorgusunda gölge düşüyor)
+const BRAND_DOMAINS = [
+  'sahibinden.com',
+  'hepsiemlak.com',
   'hurriyetemlak.com',
   'era.com.tr',
+  'century21.com.tr',
   'remax.com.tr',
-  'realtyworld.com.tr',
   'turyap.com.tr',
+  'realtyworld.com.tr',
 ];
 
 export class ExaSearcher {
@@ -59,7 +65,8 @@ export class ExaSearcher {
     const query = this.#buildQuery({ location, rooms, minPrice, maxPrice });
     this.#logger?.info({ query }, 'Exa search');
 
-    const body = {
+    // 1. Ana portal sorgusu (50 sonuç — emlakjet/sahibinden/hepsiemlak/zingat/hurriyetemlak)
+    const portalBody = {
       query,
       type: 'neural',
       useAutoprompt: false,
@@ -69,9 +76,53 @@ export class ExaSearcher {
         highlights: { numSentences: 6 },
         summary: true,
       },
-      includeDomains: EMARKA_DOMAINS,
+      includeDomains: PORTAL_DOMAINS,
     };
 
+    // 2. Brand domain sorguları — paralel, her biri 10 sonuç (içerik gerekmez → linksOnly)
+    const brandBodies = BRAND_DOMAINS.map((domain) => ({
+      query,
+      type: 'neural',
+      useAutoprompt: false,
+      numResults: 10,
+      contents: { text: false },
+      includeDomains: [domain],
+    }));
+
+    const [portalRes, ...brandResArr] = await Promise.all([
+      this.#exaPost(portalBody),
+      ...brandBodies.map((b) => this.#exaPost(b).catch(() => null)),
+    ]);
+
+    this.#logger?.info({ count: portalRes?.results?.length }, 'Exa portal response');
+
+    const portalListings = this.#normalize(portalRes?.results || [])
+      .filter((l) => this.#isValidListingUrl(l.url));
+
+    // Brand sonuçları — fiyat parse edilmeden doğrudan linksOnly'a alınır
+    const brandListings = brandResArr
+      .filter(Boolean)
+      .flatMap((r) => this.#normalize(r?.results || []))
+      .filter((l) => this.#isValidListingUrl(l.url));
+    this.#logger?.info({ count: brandListings.length }, 'Exa brand response');
+
+    const allListings = [...portalListings, ...brandListings];
+
+    // URL bazlı dedupe
+    const seen = new Set();
+    const unique = allListings.filter((l) => {
+      if (seen.has(l.url)) return false;
+      seen.add(l.url);
+      return true;
+    });
+
+    return this.#splitResults(unique);
+  }
+
+  /**
+   * Internal helper: POST to Exa search endpoint.
+   */
+  async #exaPost(body) {
     const res = await fetch(EXA_SEARCH, {
       method: 'POST',
       headers: {
@@ -80,17 +131,11 @@ export class ExaSearcher {
       },
       body: JSON.stringify(body),
     });
-
     if (!res.ok) {
       const err = await res.text();
       throw new Error(`Exa ${res.status}: ${err}`);
     }
-
-    const data = await res.json();
-    this.#logger?.info({ count: data.results?.length }, 'Exa response');
-
-    const listings = this.#normalize(data.results || []);
-    return this.#splitResults(listings);
+    return res.json();
   }
 
   /**
@@ -100,6 +145,40 @@ export class ExaSearcher {
     const priced = listings.filter((l) => l.price !== null && l.price > 0);
     const linksOnly = listings.filter((l) => l.price === null || l.price <= 0);
     return { priced, linksOnly };
+  }
+
+  /**
+   * URL'nin geçerli bir ilan detay sayfası olup olmadığını kontrol eder.
+   * CDN URL'leri, kategori sayfaları ve alakasız içerikler filtreler.
+   */
+  #isValidListingUrl(url) {
+    if (!url) return false;
+    try {
+      const u = new URL(url);
+      const host = u.hostname;
+      const path = u.pathname;
+
+      // CDN/image domain'leri filtrele
+      if (/image\d*\.|cdn\.|static\.|media\./.test(host)) return false;
+
+      // Sahibinden: /ilan/...(Türkçe) veya /listing/...-XXXXXXXX/detail (İngilizce) formatı
+      if (host.includes('sahibinden.com')) {
+        if (/\/ilan\/[^/]+-\d{8,}/.test(path)) return true;
+        if (/\/listing\/[^/]+-\d{7,}\/detail/.test(path)) return true;
+        // Arama sayfaları (expansion için) — /satilik-daire/ gibi
+        if (/\/(satilik|kiralik)/.test(path)) return true;
+        return false;
+      }
+
+      // Hepsiemlak: tüm URL'lere izin ver — Apify search sayfalarını detail URL'lere genişletir
+      if (host.includes('hepsiemlak.com')) {
+        return true;
+      }
+
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**

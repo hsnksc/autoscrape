@@ -1,10 +1,10 @@
-# Unified Turkish Real Estate Scraper — requests tabanlı, Selenium yok
+# Unified Turkish Real Estate Scraper — Playwright + requests tabanlı
 
-FROM python:3.12-slim
+FROM apify/actor-python-playwright:3.12
 
 WORKDIR /usr/src/app
 
-# Bagimlilik yukle
+# Bagimlilik yukle (playwright SDK zaten base image'de mevcut)
 COPY requirements.txt /tmp/req_unified.txt
 RUN pip install --no-cache-dir -r /tmp/req_unified.txt
 

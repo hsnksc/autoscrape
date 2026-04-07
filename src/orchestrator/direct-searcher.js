@@ -124,8 +124,8 @@ export class DirectSearcher {
     this._log(`Doğrudan arama başlıyor`, { district: districtName, slug });
 
     const sites = [
-      { name: 'CB',       base: 'https://www.cb.com.tr' },
-      { name: 'Century21', base: 'https://www.century21.com.tr' },
+      { name: 'CB', base: 'https://www.cb.com.tr' },
+      // Century21 JS-rendered — Exa includeDomains üzerinden taranıyor
     ];
 
     const allUrls = [];
@@ -147,6 +147,11 @@ export class DirectSearcher {
 
     // Deduplicate
     const unique = [...new Set(allUrls)];
+
+    // Sahibinden: Apify actor'ın expand etmesi için arama URL'si ekle (Playwright ile)
+    const sahibindenUrl = `https://www.sahibinden.com/satilik-daire/istanbul-${slug}?pagingSize=20`;
+    if (!unique.includes(sahibindenUrl)) unique.push(sahibindenUrl);
+
     this._log('Doğrudan arama toplam', { total: unique.length });
     return unique;
   }

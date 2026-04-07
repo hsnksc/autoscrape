@@ -53,15 +53,15 @@ async function runSearch(jobId, { lat, lng, rooms, minPrice, maxPrice }) {
     await cache.setStatus(jobId, JobStatus.SEARCHING);
 
     // 1. Koordinatı mahalle/ilçeye çevir
-    const location = await geocoder.reverseGeocode(lat, lng);
-    logger.info({ jobId, location }, 'Geocode tamamlandı');
+    const { location, district } = await geocoder.reverseGeocode(lat, lng);
+    logger.info({ jobId, location, district }, 'Geocode tamamlandı');
 
     // 2. Exa AI araması — hem fiyatlı ilanlar hem sadece-link ilanlar
     const { priced, linksOnly } = await exaSearcher.search({ location, rooms, minPrice, maxPrice });
     logger.info({ jobId, priced: priced.length, linksOnly: linksOnly.length }, 'Exa araması tamamlandı');
 
     // 3. CB + Century21 doğrudan lokasyon araması (linksOnly'a eklenir)
-    const directUrls = await directSearcher.searchAll(location.district);
+    const directUrls = await directSearcher.searchAll(district);
     logger.info({ jobId, directUrls: directUrls.length }, 'Doğrudan arama tamamlandı');
 
     // Mevcut linksOnly URL set'i; direktten gelen duplicate'leri ele
@@ -70,6 +70,13 @@ async function runSearch(jobId, { lat, lng, rooms, minPrice, maxPrice }) {
       .filter((u) => !existingUrls.has(u))
       .map((u) => ({ url: u }));
     const allLinksOnly = [...linksOnly, ...newDirectLinks];
+
+    // Domain dağılımını logla (debug)
+    const domainCounts = {};
+    for (const r of allLinksOnly) {
+      try { const d = new URL(r.url).hostname.replace('www.', ''); domainCounts[d] = (domainCounts[d] || 0) + 1; } catch {}
+    }
+    logger.info({ jobId, domainCounts }, 'Apify URL domain dağılımı');
 
     if (allLinksOnly.length > 0) {
       // 4a. Fiyatlı ilanları Apify beklerken sakla
