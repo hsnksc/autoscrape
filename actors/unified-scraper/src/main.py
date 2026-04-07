@@ -65,87 +65,64 @@ def _get_scraper(url: str):
 
 
 def _is_hepsiemlak_search_page(url: str) -> bool:
-    """Hepsiemlak arama/liste sayfası mı? (detay sayfası değil)"""
+    """Hepsiemlak arama/liste sayfası mı? (detay sayfası değil)
+    
+    Arama sayfaları: /mahalle-satilik, /mahalle-satilik/daire, vb.
+    Detay sayfaları: /sehir-ilce-mahalle-satilik/tip/OFFSET-ID formatında
+                     son path segment: iki rakam grubu tire ile (165906-10)
+    """
+    import re
     from urllib.parse import urlparse
+    if "hepsiemlak.com" not in url:
+        return False
     path = urlparse(url).path
-    return "hepsiemlak.com" in url and "/ilan/" not in path
+    # Detay URL'si: son segment OFFSET-ID formatında (sayı-sayı)
+    last_segment = path.rstrip("/").split("/")[-1]
+    if re.match(r'^\d+-\d+$', last_segment):
+        return False  # Detay sayfası
+    if "/ilan/" in path:
+        return False  # /ilan/ içeren eski format detay sayfası
+    return True  # Arama/liste sayfası
 
 
 def _expand_hepsiemlak_search(url: str, proxy_url: str | None) -> list[str]:
     """
     Hepsiemlak arama URL'inden ilan detay URL'lerini çıkar.
     Nuxt.js SPA olduğu için HTML parse yerine Playwright DOM evaluate kullan.
+    Hepsiemlak ilan detay URL formatı: /sehir-ilce-mahalle-satilik/tip/OFFSET-ID
+    Son segment: iki rakam grubu tire ile ayrılmış (ör: 165906-10, 163745-7)
     """
     from playwright_fetch import fetch_links_sync
-    # SPA sonrası DOM'dan /ilan/ içeren a[href] linklerini al
-    raw_links = fetch_links_sync(
+    import re as _re
+    all_links = fetch_links_sync(
         url,
-        link_selector="a[href*='/ilan/']",
+        link_selector="a[href]",
         proxy_url=proxy_url,
         timeout_ms=50_000,
     )
-    print(f"[HEPSIEMLAK-DOM] {url[:60]} → {len(raw_links)} raw link")
-    # Temizle: sadece hepsiemlak /ilan/ linkleri
+    print(f"[HEPSIEMLAK-DOM] {url[:60]} → {len(all_links)} total a[href]")
+
+    # Hepsiemlak ilan detay URL pattern:
+    # https://www.hepsiemlak.com/xxx-satilik/TIP/OFFSET-ID
+    # Son path segment: sayı-sayı (ör: 165906-10, 20751-29425)
+    detail_pattern = _re.compile(r'hepsiemlak\.com/[^/]+-satilik[^/]*/[^/]+/\d+-\d+')
+
     found = []
     seen = set()
-    for href in raw_links:
+    for href in all_links:
         if not href:
             continue
-        # Absolute URL oluştur
-        if href.startswith("/"):
-            href = "https://www.hepsiemlak.com" + href
-        # Navigasyon/kategori linklerini atla, ilana git
-        if "/ilan/" in href and href not in seen:
-            # Sadece detay URL'leri: /ilan/xxx-NNN formatı
-            from urllib.parse import urlparse as _up
-            path = _up(href).path
-            parts = path.strip("/").split("/")
-            # /ilan/slug-ID123 veya daha derin path — en az bir segment /ilan/'dan sonra
-            if len(parts) >= 2 and parts[0] == "ilan":
-                seen.add(href)
-                found.append(href)
+        if detail_pattern.search(href) and href not in seen:
+            seen.add(href)
+            found.append(href)
+            if len(found) >= 20:  # Max 20 ilan — Playwright timeout önle
+                break
+
     print(f"[HEPSIEMLAK] Arama sayfası {url[:60]} → {len(found)} ilan URL")
     return found
 
 
-def _is_sahibinden_search_page(url: str) -> bool:
-    """Sahibinden arama/liste sayfası mı? (ilan detay sayfası değil)"""
-    from urllib.parse import urlparse
-    path = urlparse(url).path
-    if "sahibinden.com" not in url:
-        return False
-    # Detay sayfası: /ilan/... ile başlar
-    if "/ilan/" in path:
-        return False
-    # Arama sayfaları: /satilik-daire/, /kiralik-daire/, /emlak- ile başlar vb.
-    return True
-
-
-def _expand_sahibinden_search(url: str, proxy_url: str | None) -> list[str]:
-    """
-    Sahibinden arama URL'inden ilan detay URL'lerini çıkar (Playwright DOM).
-    Sahibinden da SPA benzeri yapıda; HTML parse yerine DOM evaluate kullan.
-    """
-    from playwright_fetch import fetch_links_sync
-    raw_links = fetch_links_sync(
-        url,
-        link_selector="a[href*='/ilan/']",
-        proxy_url=proxy_url,
-        timeout_ms=50_000,
-    )
-    print(f"[SAHIBINDEN-DOM] {url[:60]} → {len(raw_links)} raw link")
-    found = []
-    seen = set()
-    for href in raw_links:
-        if not href:
-            continue
-        if href.startswith("/"):
-            href = "https://www.sahibinden.com" + href
-        if "/ilan/" in href and href not in seen:
-            seen.add(href)
-            found.append(href)
-    print(f"[SAHIBINDEN] Arama sayfası {url[:60]} → {len(found)} ilan URL")
-    return found
+# Sahibinden devre dışı — Cloudflare 403 bypass edilemiyor
 
 
 # ---------------------------------------------------------------------------
@@ -232,35 +209,16 @@ async def main() -> None:
                 Actor.log.warning(f"Proxy yapılandırma hatası, proxy devre dışı: {exc}")
 
         # Proxy gerektiren domain'ler
-        _PROXY_DOMAINS = {"hepsiemlak.com", "sahibinden.com", "remax.com.tr"}
+        _PROXY_DOMAINS = {"hepsiemlak.com", "remax.com.tr"}
 
-        # Hepsiemlak arama sayfalarını genişlet (arama URL → detay URL'leri)
+        # Hepsiemlak arama sayfalarını atla — Playwright expansion çok yavaş (45s/sayfa)
+        # Sadece detay URL'lerini işle
         expanded_urls: list[str] = []
         for url in urls:
             if _is_hepsiemlak_search_page(url):
-                proxy_url_hp = None
-                if proxy_config:
-                    try:
-                        proxy_url_hp = await proxy_config.new_url()
-                    except Exception:
-                        pass
-                detail_urls = await asyncio.to_thread(
-                    _expand_hepsiemlak_search, url, proxy_url_hp
-                )
-                expanded_urls.extend(detail_urls)
-            elif _is_sahibinden_search_page(url):
-                proxy_url_shb = None
-                if proxy_config:
-                    try:
-                        proxy_url_shb = await proxy_config.new_url()
-                    except Exception:
-                        pass
-                detail_urls = await asyncio.to_thread(
-                    _expand_sahibinden_search, url, proxy_url_shb
-                )
-                expanded_urls.extend(detail_urls)
-            else:
-                expanded_urls.append(url)
+                Actor.log.info(f"Hepsiemlak arama sayfası atlandı (yavaş): {url[:60]}")
+                continue
+            expanded_urls.append(url)
 
         # Dedupe
         seen_exp = set()
@@ -276,6 +234,10 @@ async def main() -> None:
         async def _scrape_one(url: str) -> dict | None:
             async with sem:
                 name = _get_scraper(url)
+                # Sahibinden tamamen devre dışı — Cloudflare 403 bypass edilemiyor
+                if name == "sahibinden":
+                    Actor.log.info(f"Sahibinden atlandı (CF 403): {url[:60]}")
+                    return None
                 # Proxy gerektiren siteler için yeni proxy URL al
                 proxy_url: str | None = None
                 if proxy_config and any(d in url for d in _PROXY_DOMAINS):

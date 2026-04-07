@@ -18,7 +18,6 @@ const PORTAL_DOMAINS = [
 
 // Per-domain sorgular — her biri için 10'ar sonuç (portal sorgusunda gölge düşüyor)
 const BRAND_DOMAINS = [
-  'sahibinden.com',
   'hepsiemlak.com',
   'hurriyetemlak.com',
   'era.com.tr',
@@ -42,81 +41,129 @@ export class ExaSearcher {
   }
 
   /**
-   * Build a natural-language query from structured criteria.
+   * Konum parçalarından arama sorgu metni oluşturur.
+   * Örn: "Gebizli Muratpaşa Antalya 2+1 1.000.000-5.000.000 TL satılık daire"
    */
-  #buildQuery({ location, rooms, minPrice, maxPrice }) {
-    const parts = [location];
+  #buildQuery({ locationStr, rooms, minPrice, maxPrice }) {
+    const parts = [locationStr, 'satılık daire'];
     if (rooms) parts.push(rooms);
     if (minPrice || maxPrice) {
-      const priceText = `${minPrice ? minPrice.toLocaleString('tr-TR') : ''}${maxPrice ? '-' + maxPrice.toLocaleString('tr-TR') : ''}`;
-      parts.push(priceText + ' TL');
+      const priceText = `${minPrice ? minPrice.toLocaleString('tr-TR') : ''}${maxPrice ? '-' + maxPrice.toLocaleString('tr-TR') : ''} TL`;
+      parts.push(priceText);
     }
     parts.push('ilan');
     return parts.filter(Boolean).join(' ');
   }
 
   /**
-   * Search + fetch contents in a single Exa call.
-   * Returns normalized listing objects.
+   * Search + fetch contents.
+   * @param {object} params
+   * @param {string}   params.location       — eski compat (geocoder'ın birleşik string'i)
+   * @param {string}   params.mahalle        — Google'dan gelen mahalle adı
+   * @param {string}   params.ilce           — ilçe adı
+   * @param {string}   params.il             — il adı
+   * @param {string[]} params.nearbyMahalleler — komşu mahalle adları (merkez dahil)
+   * @param {string[]} params.nearbyIlceler  — komşu ilçe adları
+   * @param {string}   params.rooms
+   * @param {number}   params.minPrice
+   * @param {number}   params.maxPrice
+   * @param {string}   params.geocodedCity   — backward compat
    */
-  async search({ location, rooms, minPrice, maxPrice }) {
+  async search({ location, mahalle, ilce, il, nearbyMahalleler = [], nearbyIlceler = [], rooms, minPrice, maxPrice, geocodedCity = '' }) {
     if (!this.#apiKey) throw new Error('EXA_API_KEY is not set');
 
-    const query = this.#buildQuery({ location, rooms, minPrice, maxPrice });
-    this.#logger?.info({ query }, 'Exa search');
+    const city = il || geocodedCity;
 
-    // 1. Ana portal sorgusu (50 sonuç — emlakjet/sahibinden/hepsiemlak/zingat/hurriyetemlak)
-    const portalBody = {
-      query,
-      type: 'neural',
-      useAutoprompt: false,
-      numResults: 50,
-      contents: {
-        text: true,
-        highlights: { numSentences: 6 },
-        summary: true,
-      },
-      includeDomains: PORTAL_DOMAINS,
-    };
+    // Aranacak konum listesini oluştur (benzersiz mahalle + ilçe kombinasyonları)
+    // Önce en spesifik (mahalle+ilçe+il), sonra diğer yakın mahalleler
+    const locationStrings = this.#buildLocationList({ mahalle, ilce, il, nearbyMahalleler, nearbyIlceler, location });
+    this.#logger?.info({ locationStrings }, 'Exa konum listesi');
 
-    // 2. Brand domain sorguları — paralel, her biri 10 sonuç (içerik gerekmez → linksOnly)
-    const brandBodies = BRAND_DOMAINS.map((domain) => ({
-      query,
-      type: 'neural',
-      useAutoprompt: false,
-      numResults: 10,
-      contents: { text: false },
-      includeDomains: [domain],
-    }));
+    // Her konum için portal + brand sorgusu çalıştır (paralel gruplar)
+    const allListingsMap = new Map(); // URL → listing (dedupe için)
 
-    const [portalRes, ...brandResArr] = await Promise.all([
-      this.#exaPost(portalBody),
-      ...brandBodies.map((b) => this.#exaPost(b).catch(() => null)),
-    ]);
+    await Promise.all(
+      locationStrings.map(async (locStr) => {
+        const query = this.#buildQuery({ locationStr: locStr, rooms, minPrice, maxPrice });
+        this.#logger?.info({ query }, 'Exa sorgu');
 
-    this.#logger?.info({ count: portalRes?.results?.length }, 'Exa portal response');
+        const portalBody = {
+          query,
+          type: 'neural',
+          useAutoprompt: false,
+          numResults: 30,
+          contents: {
+            text: true,
+            highlights: { numSentences: 6 },
+            summary: true,
+          },
+          includeDomains: PORTAL_DOMAINS,
+        };
 
-    const portalListings = this.#normalize(portalRes?.results || [])
-      .filter((l) => this.#isValidListingUrl(l.url));
+        const brandBodies = BRAND_DOMAINS.map((domain) => ({
+          query,
+          type: 'neural',
+          useAutoprompt: false,
+          numResults: 8,
+          contents: { text: false },
+          includeDomains: [domain],
+        }));
 
-    // Brand sonuçları — fiyat parse edilmeden doğrudan linksOnly'a alınır
-    const brandListings = brandResArr
-      .filter(Boolean)
-      .flatMap((r) => this.#normalize(r?.results || []))
-      .filter((l) => this.#isValidListingUrl(l.url));
-    this.#logger?.info({ count: brandListings.length }, 'Exa brand response');
+        const [portalRes, ...brandResArr] = await Promise.all([
+          this.#exaPost(portalBody).catch(() => null),
+          ...brandBodies.map((b) => this.#exaPost(b).catch(() => null)),
+        ]);
 
-    const allListings = [...portalListings, ...brandListings];
+        const listings = [
+          ...this.#normalize(portalRes?.results || [], city),
+          ...brandResArr.filter(Boolean).flatMap((r) => this.#normalize(r?.results || [], city)),
+        ].filter((l) => this.#isValidListingUrl(l.url));
 
-    // URL bazlı dedupe
-    const seen = new Set();
-    const unique = allListings.filter((l) => {
-      if (seen.has(l.url)) return false;
-      seen.add(l.url);
-      return true;
-    });
+        for (const l of listings) {
+          if (!allListingsMap.has(l.url)) allListingsMap.set(l.url, l);
+        }
+      }),
+    );
 
+    const unique = [...allListingsMap.values()];
+    this.#logger?.info({ total: unique.length, locations: locationStrings.length }, 'Exa toplam sonuç');
     return this.#splitResults(unique);
+  }
+
+  /**
+   * Aranacak konum string listesini oluşturur.
+   * Merkez mahalle en başta olmak üzere, farklı komşu mahalleler eklenir.
+   * Maksimum 3 farklı konum sorgusuna izin verilir (API maliyeti kontrolü).
+   */
+  #buildLocationList({ mahalle, ilce, il, nearbyMahalleler, nearbyIlceler, location }) {
+    const MAX_LOCATIONS = 3;
+    const result = [];
+
+    if (ilce && il) {
+      if (mahalle) {
+        // Ana konum: mahalle + ilçe + il
+        result.push(`${mahalle} ${ilce} ${il}`);
+        // Komşu mahalleler (ana mahalleden farklı olanlar, aynı ilçede)
+        for (const m of nearbyMahalleler) {
+          if (result.length >= MAX_LOCATIONS) break;
+          if (m !== mahalle) result.push(`${m} ${ilce} ${il}`);
+        }
+      } else {
+        // Mahalle bilinmiyorsa doğrudan ilçe + il
+        result.push(`${ilce} ${il}`);
+      }
+      // Yakın farklı ilçeler varsa onları da ekle
+      for (const i of (nearbyIlceler || [])) {
+        if (result.length >= MAX_LOCATIONS) break;
+        if (i !== ilce) result.push(`${i} ${il}`);
+      }
+    } else if (il) {
+      result.push(il);
+    } else {
+      result.push(location || '');
+    }
+
+    return result.filter(Boolean);
   }
 
   /**
@@ -161,14 +208,8 @@ export class ExaSearcher {
       // CDN/image domain'leri filtrele
       if (/image\d*\.|cdn\.|static\.|media\./.test(host)) return false;
 
-      // Sahibinden: /ilan/...(Türkçe) veya /listing/...-XXXXXXXX/detail (İngilizce) formatı
-      if (host.includes('sahibinden.com')) {
-        if (/\/ilan\/[^/]+-\d{8,}/.test(path)) return true;
-        if (/\/listing\/[^/]+-\d{7,}\/detail/.test(path)) return true;
-        // Arama sayfaları (expansion için) — /satilik-daire/ gibi
-        if (/\/(satilik|kiralik)/.test(path)) return true;
-        return false;
-      }
+      // Sahibinden: ZenRows ile scrape edilecek — Exa'dan URL'leri al
+      // (artık filtrelenmeyecek, URL routing'de ZenRows'a yönlendirilecek)
 
       // Hepsiemlak: tüm URL'lere izin ver — Apify search sayfalarını detail URL'lere genişletir
       if (host.includes('hepsiemlak.com')) {
@@ -208,7 +249,7 @@ export class ExaSearcher {
   /**
    * Normalize Exa results into a standard emlak schema.
    */
-  #normalize(rawResults) {
+  #normalize(rawResults, geocodedCity = '') {
     return rawResults.map((r) => {
       const text = r.text || '';
       const domain = this.#domain(r.url);
@@ -220,7 +261,7 @@ export class ExaSearcher {
         price: this.#parsePrice(text),
         currency: 'TRY',
 
-        city: this.#parseCity(text, r.url),
+        city: this.#parseCity(text, r.url, geocodedCity),
         district: this.#parseDistrict(text),
         rooms: this.#parseRooms(text),
         grossM2: this.#parseM2(text, 'brut'),
@@ -260,25 +301,60 @@ export class ExaSearcher {
   }
 
   #parsePrice(text) {
-    // Match Turkish formatted prices like 4.500.000 TL
-    const m = text.match(/([\d.]+)\s*TL/i);
+    // 28.500 TL, 28,500 TL, 4.500.000 TL, 28.500,00 TL formatlarını destekler
+    const m = text.match(/([\d.,]+)\s*TL/i);
     if (!m) return null;
-    return parseFloat(m[1].replace(/\./g, ''));
+    const raw = m[1];
+    const hasDot = raw.includes('.');
+    const hasComma = raw.includes(',');
+    let val;
+    if (hasDot && hasComma) {
+      val = parseFloat(raw.replace(/\./g, '').replace(',', '.'));
+    } else if (hasDot) {
+      const parts = raw.split('.');
+      val = parts[parts.length - 1].length === 3
+        ? parseFloat(raw.replace(/\./g, ''))
+        : parseFloat(raw);
+    } else if (hasComma) {
+      const parts = raw.split(',');
+      val = parts[parts.length - 1].length === 3
+        ? parseFloat(raw.replace(/,/g, ''))
+        : parseFloat(raw.replace(',', '.'));
+    } else {
+      val = parseFloat(raw);
+    }
+    return val >= 1000 ? val : null;
   }
 
-  #parseCity(text, url) {
-    const cities = ['İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana'];
+  #parseCity(text, url, geocodedCity = '') {
+    const cities = ['İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana', 'Konya',
+      'Gaziantep', 'Kocaeli', 'Mersin', 'Eskişehir', 'Kayseri', 'Trabzon',
+      'Samsun', 'Alanya', 'Bodrum', 'Fethiye', 'Muğla', 'Denizli'];
+
+    // Her şehrin metinde kaç kez geçtiğini say
+    const counts = {};
     for (const c of cities) {
-      if (text.includes(c)) return c;
+      counts[c] = (text.match(new RegExp(c, 'g')) || []).length;
     }
+
+    // Geocoder'dan gelen şehir metinde geçiyorsa öncelikle onu kullan
+    if (geocodedCity && counts[geocodedCity] >= 1) return geocodedCity;
+
+    // Yoksa en sık geçeni kullan
+    const sorted = Object.entries(counts)
+      .filter(([, n]) => n > 0)
+      .sort(([, a], [, b]) => b - a);
+    if (sorted.length) return sorted[0][0];
+
+    // URL'den başıvur
     try {
-      // Try to extract from URL path
-      const parts = new URL(url).pathname.split('/').filter(Boolean);
-      for (const p of parts) {
-        if (cities.some((c) => c.toLowerCase().includes(p.toLowerCase()))) return p;
-      }
-    } catch {}
-    return '';
+      const pathname = new URL(url).pathname.toLowerCase();
+      return cities.find((c) => {
+        const norm = c.toLowerCase().replace(/ı/g, 'i').replace(/ş/g, 's')
+          .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c');
+        return pathname.includes(norm);
+      }) || '';
+    } catch { return ''; }
   }
 
   #parseDistrict(text) {

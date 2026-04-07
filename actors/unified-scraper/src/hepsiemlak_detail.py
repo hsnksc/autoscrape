@@ -31,18 +31,8 @@ _HEADERS = {
 
 def _fetch_html(url: str, proxy_url: Optional[str] = None, timeout: int = 20) -> str:
     proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
-    # İlk deneme: Playwright (Cloudflare bypass en güvenilir)
-    try:
-        import playwright_fetch
-        html = playwright_fetch.fetch_sync(url, proxy_url=proxy_url, timeout_ms=30_000)
-        if html:
-            return html
-        print(f"[HEPSIEMLAK] Playwright boş döndü, cloudscraper deneniyor: {url[:60]}")
-    except ImportError:
-        pass
-    except Exception as exc:
-        print(f"[HEPSIEMLAK] Playwright hatası ({url[:60]}): {exc}")
-    # İkinci deneme: cloudscraper
+    # Detay sayfaları için cloudscraper yeterli — Playwright sadece arama sayfaları için
+    # İlk deneme: cloudscraper
     if _HAS_CLOUDSCRAPER:
         try:
             scraper = _cloudscraper.create_scraper(browser={"browser": "chrome", "platform": "windows"})

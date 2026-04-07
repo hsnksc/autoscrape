@@ -42,8 +42,8 @@ export class ApifyScraper {
       urls,
       jobId,
       ...(webhookUrl ? { webhookUrl } : {}),
-      concurrency:  parseInt(process.env.APIFY_CONCURRENCY  || '3'),
-      requestDelay: parseFloat(process.env.APIFY_DELAY      || '1.5'),
+      concurrency:  parseInt(process.env.APIFY_CONCURRENCY  || '5'),
+      requestDelay: parseFloat(process.env.APIFY_DELAY      || '0.5'),
       sahibindenCookies: process.env.SAHIBINDEN_COOKIES || '',
     };
 
@@ -69,7 +69,7 @@ export class ApifyScraper {
     this.#logger?.info({ actorId: this.#actorId, urlCount: urls.length, jobId }, 'Apify run başlatılıyor');
 
     // Actor input doğrudan body olarak gönderilir (wrapper olmadan)
-    const res = await fetch(`${endpoint}?${queryString}`, {
+    const res = await fetch(`${endpoint}?${queryString}&timeout=120`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),

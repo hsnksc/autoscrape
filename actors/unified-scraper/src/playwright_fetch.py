@@ -178,7 +178,10 @@ def fetch_sync(url: str, proxy_url: Optional[str] = None, timeout_ms: int = 40_0
     try:
         return loop.run_until_complete(fetch_with_playwright(url, proxy_url, timeout_ms))
     finally:
-        loop.close()
+        try:
+            loop.close()
+        except RuntimeError:
+            pass  # Playwright subprocess cleanup
 
 
 def fetch_links_sync(url: str, link_selector: str = "a[href]", proxy_url: Optional[str] = None, timeout_ms: int = 45_000) -> list[str]:
@@ -187,4 +190,7 @@ def fetch_links_sync(url: str, link_selector: str = "a[href]", proxy_url: Option
     try:
         return loop.run_until_complete(fetch_links_from_page(url, link_selector, proxy_url, timeout_ms))
     finally:
-        loop.close()
+        try:
+            loop.close()
+        except RuntimeError:
+            pass  # Playwright subprocess cleanup
