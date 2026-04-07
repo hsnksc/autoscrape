@@ -140,9 +140,15 @@ async def main() -> None:
         tasks = [_scrape_one(url) for url in urls]
         raw_results = await asyncio.gather(*tasks, return_exceptions=True)
 
+        _INVALID_TITLES = ("410", "sayfa artık mevcut değil", "not found", "page not found")
+
         listings = []
         for r in raw_results:
             if isinstance(r, dict):
+                title_lower = (r.get("title") or "").lower()
+                if any(t in title_lower for t in _INVALID_TITLES):
+                    Actor.log.info(f"Geçersiz ilan atlandı: {r.get('url','')[:60]}")
+                    continue
                 listings.append(r)
             elif isinstance(r, Exception):
                 Actor.log.warning(f"Görev hatası: {r}")

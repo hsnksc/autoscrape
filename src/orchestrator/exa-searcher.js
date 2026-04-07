@@ -199,8 +199,30 @@ export class ExaSearcher {
   }
 
   #parseDistrict(text) {
-    const m = text.match(/([A-ZÇĞİÖŞÜ][a-zçğıöşü]+)\s*\/\s*([A-ZÇĞİÖŞÜ][a-zçğıöşü]+)/);
-    return m ? m[2] : '';
+    // "İstanbul - Kadıköy" veya "İstanbul Kadıköy" şeklinde şehirden sonraki ilçeyi bul
+    const cities = ['İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana'];
+    // Bilinen ilçe/semtler listesi — yanlış kelimeler gelmesini önlemek için
+    const KNOWN_DISTRICTS = [
+      'Kadıköy','Üsküdar','Beşiktaş','Şişli','Beyoğlu','Fatih','Bakırköy','Ataşehir',
+      'Kartal','Maltepe','Pendik','Sancaktepe','Ümraniye','Beykoz','Çekmeköy','Tuzla',
+      'Sultanbeyli','Çatalca','Silivri','Beylikdüzü','Esenyurt','Avcılar','Küçükçekmece',
+      'Bahçelievler','Bağcılar','Güngören','Esenler','Sultangazi','Zeytinburnu',
+      'Kağıthane','Sarıyer','Eyüpsultan','Arnavutköy','Bayrampaşa','Gaziosmanpaşa',
+      'Büyükçekmece','Çankaya','Keçiören','Mamak','Yenimahalle','Altındağ',
+      'Konak','Bornova','Karşıyaka','Buca','Çiğli',
+    ];
+    for (const city of cities) {
+      // "Şehir - İlçe" veya "Şehir İlçe Mahalle" formatları
+      const m = text.match(new RegExp(city + '\\s*[-–]\\s*([A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:\\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+)?)'));
+      if (m) {
+        const candidate = m[1];
+        if (KNOWN_DISTRICTS.some(d => candidate.startsWith(d))) return candidate;
+      }
+    }
+    // "Kadıköy Bostancı Mahallesi" gibi → "Kadıköy"
+    const mahalle = text.match(/([A-ZÇĞİÖŞÜ][a-zçğıöşü]+)\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+\s+Mahallesi/);
+    if (mahalle && KNOWN_DISTRICTS.includes(mahalle[1])) return mahalle[1];
+    return '';
   }
 
   #parseRooms(text) {
