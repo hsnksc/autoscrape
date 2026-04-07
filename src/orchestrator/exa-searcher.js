@@ -16,6 +16,10 @@ const EMARKA_DOMAINS = [
   'emlakjet.com',
   'zingat.com',
   'hurriyetemlak.com',
+  'era.com.tr',
+  'remax.com.tr',
+  'realtyworld.com.tr',
+  'turyap.com.tr',
 ];
 
 export class ExaSearcher {

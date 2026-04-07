@@ -10,6 +10,7 @@ import { WebSocketServer } from 'ws';
 import { CacheManager } from './cache.js';
 import { Geocoder } from './geocoder.js';
 import { ApifyScraper } from './apify-scraper.js';
+import { DirectSearcher } from './direct-searcher.js';
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 const app = express();
@@ -26,6 +27,9 @@ geocoder.setLogger(logger);
 
 const apifyScraper = new ApifyScraper();
 apifyScraper.setLogger(logger);
+
+const directSearcher = new DirectSearcher();
+directSearcher.setLogger(logger);
 
 const WEBHOOK_URL = process.env.WEBHOOK_URL || 'http://localhost:3001/api/webhook/apify';
 
@@ -56,8 +60,19 @@ async function runSearch(jobId, { lat, lng, rooms, minPrice, maxPrice }) {
     const { priced, linksOnly } = await exaSearcher.search({ location, rooms, minPrice, maxPrice });
     logger.info({ jobId, priced: priced.length, linksOnly: linksOnly.length }, 'Exa araması tamamlandı');
 
-    if (linksOnly.length > 0) {
-      // 3a. Fiyatlı ilanları Apify beklerken sakla
+    // 3. CB + Century21 doğrudan lokasyon araması (linksOnly'a eklenir)
+    const directUrls = await directSearcher.searchAll(location.district);
+    logger.info({ jobId, directUrls: directUrls.length }, 'Doğrudan arama tamamlandı');
+
+    // Mevcut linksOnly URL set'i; direktten gelen duplicate'leri ele
+    const existingUrls = new Set(linksOnly.map((r) => r.url));
+    const newDirectLinks = directUrls
+      .filter((u) => !existingUrls.has(u))
+      .map((u) => ({ url: u }));
+    const allLinksOnly = [...linksOnly, ...newDirectLinks];
+
+    if (allLinksOnly.length > 0) {
+      // 4a. Fiyatlı ilanları Apify beklerken sakla
       await cache.saveExaResults(jobId, priced);
       await cache.setStatus(jobId, JobStatus.SCRAPING);
 
@@ -65,13 +80,13 @@ async function runSearch(jobId, { lat, lng, rooms, minPrice, maxPrice }) {
       const isLocalWebhook = /localhost|127\.0\.0\.1/.test(WEBHOOK_URL);
       const webhookUrlForApify = isLocalWebhook ? null : WEBHOOK_URL;
 
-      // 4a. Apify aktörünü tetikle
+      // 5a. Apify aktörünü tetikle (Exa link-only + doğrudan URL'ler)
       const runId = await apifyScraper.run(
-        linksOnly.map((r) => r.url),
+        allLinksOnly.map((r) => r.url),
         jobId,
         webhookUrlForApify,
       );
-      logger.info({ jobId, runId, urlCount: linksOnly.length, polling: isLocalWebhook }, 'Apify başlatıldı');
+      logger.info({ jobId, runId, urlCount: allLinksOnly.length, polling: isLocalWebhook }, 'Apify başlatıldı');
 
       if (isLocalWebhook && runId) {
         // Polling fallback: localhost geliştirme ortamı için Apify run'ı izle
@@ -81,7 +96,7 @@ async function runSearch(jobId, { lat, lng, rooms, minPrice, maxPrice }) {
       }
       // Production'da Apify webhook /api/webhook/apify endpoint'ine POST atar
     } else {
-      // 3b. Sadece-link yoksa direkt tamamla
+      // 4b. Link yoksa direkt tamamla
       const unique = dedup([...priced]);
       await cache.setResult(jobId, unique);
       await cache.setStatus(jobId, JobStatus.COMPLETED);

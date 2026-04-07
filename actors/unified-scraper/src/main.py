@@ -33,6 +33,7 @@ import emlakjet_detail    # noqa: E402
 import hepsiemlak_detail  # noqa: E402
 import sahibinden_detail  # noqa: E402
 import generic_detail     # noqa: E402
+import shb_detail         # noqa: E402
 from normalize import to_autoscrape_schema  # noqa: E402
 
 
@@ -55,6 +56,8 @@ def _get_scraper(url: str):
         return "hepsiemlak"
     if "sahibinden.com" in d:
         return "sahibinden"
+    if any(x in d for x in ("cb.com.tr", "century21.com.tr", "era.com.tr")):
+        return "shb"
     return "generic"
 
 
@@ -71,6 +74,8 @@ def _scrape_sync(url: str, scraper_name: str, cookies: list) -> dict | None:
             raw = hepsiemlak_detail.scrape_url(url)
         elif scraper_name == "sahibinden":
             raw = sahibinden_detail.scrape_url(url, cookies=cookies)
+        elif scraper_name == "shb":
+            raw = shb_detail.scrape_url(url)
         else:
             raw = generic_detail.scrape_url(url)
 
