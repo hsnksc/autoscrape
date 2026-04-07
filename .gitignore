@@ -6,6 +6,10 @@ dist/
 __pycache__/
 *.py[cod]
 *.pyo
+# Geçici araştırma dosyaları
+investigate_*.py
+test_*.py
+*_snippet.html
 .venv/
 venv/
 *.egg-info/
