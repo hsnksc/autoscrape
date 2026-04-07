@@ -10,7 +10,14 @@ export class CacheManager {
 
   constructor(logger) {
     this.#logger = logger;
-    this.#redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379');
+    this.#redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
+      lazyConnect: true,
+      maxRetriesPerRequest: 3,
+      retryStrategy: (times) => (times > 5 ? null : Math.min(times * 500, 3000)),
+    });
+    this.#redis.on('error', (err) => {
+      this.#logger?.warn({ err: err.message }, 'Redis bağlantı hatası');
+    });
   }
 
   async setStatus(jobId, status, extra = {}) {
