@@ -22,14 +22,7 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
 
-# ── Kaynak scraper dizinlerini Python path'ine ekle ──────────────────────────
-_SCRAPERS_BASE = Path("/usr/src/app/scrapers")
-for _name in ("emlakjet", "hepsiemlak", "sahibinden"):
-    _p = _SCRAPERS_BASE / _name
-    if _p.exists() and str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
-
-# unified-scraper/src kendi modüllerine erişim
+# ── Kaynak scraper dizinleri artık gerekmez (requests tabanlı) ──────────────
 _SRC = Path(__file__).parent
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))

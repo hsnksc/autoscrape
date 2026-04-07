@@ -61,14 +61,25 @@ async function runSearch(jobId, { lat, lng, rooms, minPrice, maxPrice }) {
       await cache.saveExaResults(jobId, priced);
       await cache.setStatus(jobId, JobStatus.SCRAPING);
 
-      // 4a. Apify aktörünü tetikle — bitince webhook atar
-      await apifyScraper.run(
+      // localhost ise Apify webhook çağıramaz — polling fallback kullan
+      const isLocalWebhook = /localhost|127\.0\.0\.1/.test(WEBHOOK_URL);
+      const webhookUrlForApify = isLocalWebhook ? null : WEBHOOK_URL;
+
+      // 4a. Apify aktörünü tetikle
+      const runId = await apifyScraper.run(
         linksOnly.map((r) => r.url),
         jobId,
-        WEBHOOK_URL,
+        webhookUrlForApify,
       );
-      logger.info({ jobId, urlCount: linksOnly.length }, 'Apify başlatıldı, webhook bekleniyor');
-      // Buradan sonra /api/webhook/apify endpoint'i devralır
+      logger.info({ jobId, runId, urlCount: linksOnly.length, polling: isLocalWebhook }, 'Apify başlatıldı');
+
+      if (isLocalWebhook && runId) {
+        // Polling fallback: localhost geliştirme ortamı için Apify run'ı izle
+        pollApifyRun(jobId, runId).catch((err) =>
+          logger.error({ jobId, err }, 'Apify polling hatası'),
+        );
+      }
+      // Production'da Apify webhook /api/webhook/apify endpoint'ine POST atar
     } else {
       // 3b. Sadece-link yoksa direkt tamamla
       const unique = dedup([...priced]);
@@ -145,6 +156,49 @@ app.post('/api/webhook/apify', async (req, res) => {
     await cache.setStatus(jobId, JobStatus.FAILED, { error: err.message });
   }
 });
+
+// Apify run tamamlanana kadar polling yapar (localhost geliştirme ortamı için)
+async function pollApifyRun(jobId, runId, maxWaitMs = 10 * 60 * 1000) {
+  const token = process.env.APIFY_TOKEN;
+  const pollInterval = 10_000; // 10s
+  const deadline = Date.now() + maxWaitMs;
+
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, pollInterval));
+
+    const res = await fetch(`https://api.apify.com/v2/actor-runs/${runId}?token=${token}`);
+    if (!res.ok) continue;
+    const { data } = await res.json();
+    const status = data?.status;
+
+    if (status === 'SUCCEEDED') {
+      const datasetId = data?.defaultDatasetId;
+      const apifyListings = datasetId ? await apifyScraper.fetchDataset(datasetId) : [];
+      const exaListings   = (await cache.getExaResults(jobId)) ?? [];
+      const merged = dedup([...exaListings, ...apifyListings]);
+      await cache.setResult(jobId, merged);
+      await cache.setStatus(jobId, JobStatus.COMPLETED);
+      broadcastResult(jobId, merged);
+      logger.info({ jobId, runId, count: merged.length }, 'Apify polling: job tamamlandı');
+      return;
+    }
+
+    if (status === 'FAILED' || status === 'ABORTED' || status === 'TIMED-OUT') {
+      const exaListings = (await cache.getExaResults(jobId)) ?? [];
+      const unique = dedup([...exaListings]);
+      await cache.setResult(jobId, unique);
+      await cache.setStatus(jobId, JobStatus.COMPLETED);
+      broadcastResult(jobId, unique);
+      logger.warn({ jobId, runId, status }, 'Apify başarısız — sadece Exa sonuçları döndürüldü');
+      return;
+    }
+
+    logger.debug({ jobId, runId, status }, 'Apify polling: bekleniyor');
+  }
+
+  logger.error({ jobId, runId }, 'Apify polling: süre aşıldı');
+  await cache.setStatus(jobId, JobStatus.FAILED, { error: 'Apify timeout' });
+}
 
 function dedup(listings) {
   const seen = new Set();

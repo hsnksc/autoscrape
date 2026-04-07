@@ -2,5 +2,3 @@ apify>=2.3
 beautifulsoup4>=4.12
 lxml>=5.0
 requests>=2.31
-selenium>=4.15
-camoufox[geoip]>=0.4

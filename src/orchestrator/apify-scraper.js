@@ -41,34 +41,38 @@ export class ApifyScraper {
       // Actor input
       urls,
       jobId,
-      webhookUrl,
+      ...(webhookUrl ? { webhookUrl } : {}),
       concurrency:  parseInt(process.env.APIFY_CONCURRENCY  || '3'),
       requestDelay: parseFloat(process.env.APIFY_DELAY      || '1.5'),
       sahibindenCookies: process.env.SAHIBINDEN_COOKIES || '',
     };
 
     // Apify webhook: aktör bitince webhookUrl'e POST atar
-    const webhooks = webhookUrl
-      ? [
-          {
-            eventTypes: ['ACTOR.RUN.SUCCEEDED', 'ACTOR.RUN.FAILED'],
-            requestUrl: webhookUrl,
-            payloadTemplate: JSON.stringify({
-              jobId,
-              apifyRunId: '{{resource.id}}',
-              status: '{{eventType}}',
-              datasetId: '{{resource.defaultDatasetId}}',
-            }),
-          },
-        ]
-      : [];
+    // Apify API'de webhooks, base64 ile encode edilmiş query param olarak gönderilir
+    let queryString = `token=${this.#token}`;
+    if (webhookUrl) {
+      const webhooks = [
+        {
+          eventTypes: ['ACTOR.RUN.SUCCEEDED', 'ACTOR.RUN.FAILED'],
+          requestUrl: webhookUrl,
+          payloadTemplate: JSON.stringify({
+            jobId,
+            apifyRunId: '{{resource.id}}',
+            status: '{{eventType}}',
+            datasetId: '{{resource.defaultDatasetId}}',
+          }),
+        },
+      ];
+      queryString += `&webhooks=${Buffer.from(JSON.stringify(webhooks)).toString('base64')}`;
+    }
 
     this.#logger?.info({ actorId: this.#actorId, urlCount: urls.length, jobId }, 'Apify run başlatılıyor');
 
-    const res = await fetch(`${endpoint}?token=${this.#token}`, {
+    // Actor input doğrudan body olarak gönderilir (wrapper olmadan)
+    const res = await fetch(`${endpoint}?${queryString}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input: body, webhooks }),
+      body: JSON.stringify(body),
     });
 
     if (!res.ok) {

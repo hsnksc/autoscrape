@@ -5,8 +5,8 @@
   "main": "src/orchestrator/index.js",
   "type": "module",
   "scripts": {
-    "dev": "node --watch src/orchestrator/index.js",
-    "start": "node src/orchestrator/index.js",
+    "dev": "node --env-file=.env --watch src/orchestrator/index.js",
+    "start": "node --env-file=.env src/orchestrator/index.js",
     "dev:client": "cd client && npm run dev",
     "start:client": "cd client && npm start",
     "test": "node --experimental-vm-modules node_modules/.bin/jest"

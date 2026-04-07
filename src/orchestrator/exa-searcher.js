@@ -142,8 +142,8 @@ export class ExaSearcher {
         rooms: this.#parseRooms(text),
         grossM2: this.#parseM2(text, 'brut'),
         netM2: this.#parseM2(text, 'net'),
-        buildingAge: this.#extract(text, /bina yasi[:\s]+([^\n]+)/i),
-        floor: this.#extract(text, /kat[:\s]+([^\n]+)/i),
+        buildingAge: this.#parseBuildingAge(text),
+        floor: this.#parseFloor(text),
 
         isCreditEligible: /kredi.*uygun/i.test(text),
         hasElevator: /asansor|asansör/i.test(text) && /var/i.test(text),
@@ -209,11 +209,32 @@ export class ExaSearcher {
   }
 
   #parseM2(text, type) {
-    const pattern = type === 'brut'
-      ? /brut[:\s]+m²?[:\s]*(\d+)/i
-      : /net[:\s]+m²?[:\s]*(\d+)/i;
-    const m = text.match(pattern);
-    return m ? parseInt(m[1]) : null;
+    // "Net Metrekare70 m²" veya "Net Metrekare 70" veya "Brüt Metrekare90 m²" gibi
+    const patterns = type === 'brut'
+      ? [/brüt metrekare[\s:]*?(\d+)/i, /brut[:\s]+(\d+)\s*m/i, /(\d+)\s*m².*brüt/i]
+      : [/net metrekare[\s:]*?(\d+)/i, /net[:\s]+(\d+)\s*m/i, /(\d+)\s*m².*net/i];
+    for (const pattern of patterns) {
+      const m = text.match(pattern);
+      if (m) return parseInt(m[1]);
+    }
+    return null;
+  }
+
+  #parseBuildingAge(text) {
+    const m = text.match(/bina(?:n[ıi]n)?\s*ya(?:s|ş)[ıi][:\s]*([^\n]{1,30})/i);
+    return m ? m[1].trim() : '';
+  }
+
+  #parseFloor(text) {
+    // "Bulunduğu Kat3.Kat" / "3. Kat" / "Kat: 5"
+    const m =
+      text.match(/bulundu[gğ]u kat[:\s]*([^\n]{1,20})/i) ||
+      text.match(/(\d+)\.?\s*kat/i) ||
+      text.match(/kat[:\s]*(\d+\.?\s*kat)/i);
+    if (!m) return '';
+    const val = m[1].trim();
+    // 'kat' kelimesi yoksa ekle
+    return /kat/i.test(val) ? val : val + '. Kat';
   }
 
   #extract(text, pattern) {

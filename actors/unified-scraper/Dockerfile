@@ -1,21 +1,12 @@
-# Unified Turkish Real Estate Scraper — self-contained
-# Scraper kaynaklari unified-scraper/scrapers/ icinde bulunur.
+# Unified Turkish Real Estate Scraper — requests tabanlı, Selenium yok
 
-FROM apify/actor-python-selenium:3.12
+FROM python:3.12-slim
 
 WORKDIR /usr/src/app
 
 # Bagimlilik yukle
 COPY requirements.txt /tmp/req_unified.txt
 RUN pip install --no-cache-dir -r /tmp/req_unified.txt
-
-# Camoufox patched Firefox binary indir
-RUN python -m camoufox fetch
-
-# Scraper kaynak kodlarini kopyala
-COPY scrapers/emlakjet/   /usr/src/app/scrapers/emlakjet/
-COPY scrapers/hepsiemlak/ /usr/src/app/scrapers/hepsiemlak/
-COPY scrapers/sahibinden/ /usr/src/app/scrapers/sahibinden/
 
 # Unified actor kaynak kodunu kopyala
 COPY src/ ./src/
