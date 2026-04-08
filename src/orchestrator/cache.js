@@ -7,37 +7,66 @@ const LISTING_TTL = 86400; // 24h for listing cache
 export class CacheManager {
   #redis;
   #logger;
+  /** In-memory fallback when Redis is unavailable */
+  #mem = new Map();
+  #redisOk = true;
 
   constructor(logger) {
     this.#logger = logger;
     this.#redis = new IORedis(process.env.REDIS_URL || 'redis://localhost:6379', {
       lazyConnect: true,
-      maxRetriesPerRequest: 3,
-      retryStrategy: (times) => (times > 5 ? null : Math.min(times * 500, 3000)),
+      maxRetriesPerRequest: null,
+      retryStrategy: (times) => (times > 3 ? null : Math.min(times * 500, 2000)),
+      enableOfflineQueue: false,
     });
     this.#redis.on('error', (err) => {
-      this.#logger?.warn({ err: err.message }, 'Redis bağlantı hatası');
+      if (this.#redisOk) {
+        this.#logger?.warn({ err: err.message }, 'Redis bağlantı hatası — in-memory fallback aktif');
+        this.#redisOk = false;
+      }
     });
+    this.#redis.on('connect', () => {
+      this.#redisOk = true;
+      this.#logger?.info('Redis bağlantısı kuruldu');
+    });
+  }
+
+  async #r(fn) {
+    try {
+      const result = await fn();
+      this.#redisOk = true;
+      return result;
+    } catch {
+      this.#redisOk = false;
+      return null;
+    }
   }
 
   async setStatus(jobId, status, extra = {}) {
     const key = `job:${jobId}`;
-    await this.#redis.hset(key, {
-      status,
-      ...this.#serialize(extra),
-      updatedAt: Date.now(),
+    const payload = { status, ...this.#serialize(extra), updatedAt: String(Date.now()) };
+    const ok = await this.#r(async () => {
+      await this.#redis.hset(key, payload);
+      await this.#redis.expire(key, JOB_TTL);
+      return true;
     });
-    await this.#redis.expire(key, JOB_TTL);
+    if (!ok) {
+      const existing = this.#mem.get(key) || {};
+      this.#mem.set(key, { ...existing, ...payload });
+    }
   }
 
   async getJob(jobId) {
-    const data = await this.#redis.hgetall(`job:${jobId}`);
+    const key = `job:${jobId}`;
+    let data = await this.#r(() => this.#redis.hgetall(key));
+    if (!data) data = this.#mem.get(key) || null;
     if (!data || !data.status) return null;
 
-    const resultKey = `job:${jobId}:result`;
     let result = null;
     if (data.status === JobStatus.COMPLETED) {
-      const raw = await this.#redis.get(resultKey);
+      const resultKey = `job:${jobId}:result`;
+      const raw = await this.#r(() => this.#redis.get(resultKey))
+        ?? this.#mem.get(resultKey) ?? null;
       result = raw ? JSON.parse(raw) : null;
     }
 
@@ -50,35 +79,43 @@ export class CacheManager {
     };
   }
 
-  /** Apify bekleme sırasında Exa'nın fiyatlı ilanlarını sakla. */
   async saveExaResults(jobId, listings) {
     const key = `job:${jobId}:exa_results`;
-    await this.#redis.set(key, JSON.stringify(listings), 'EX', JOB_TTL);
+    const val = JSON.stringify(listings);
+    const ok = await this.#r(() => this.#redis.set(key, val, 'EX', JOB_TTL));
+    if (!ok) this.#mem.set(key, val);
   }
 
-  /** Apify webhook geldiğinde Exa ilanlarını geri al. */
   async getExaResults(jobId) {
-    const raw = await this.#redis.get(`job:${jobId}:exa_results`);
+    const key = `job:${jobId}:exa_results`;
+    const raw = (await this.#r(() => this.#redis.get(key))) ?? this.#mem.get(key) ?? null;
     return raw ? JSON.parse(raw) : [];
   }
 
   async storeListings(jobId, listings) {
     const key = `job:${jobId}:listings`;
-    await this.#redis.set(key, JSON.stringify(listings), 'EX', JOB_TTL);
+    const val = JSON.stringify(listings);
+    const ok = await this.#r(() => this.#redis.set(key, val, 'EX', JOB_TTL));
+    if (!ok) this.#mem.set(key, val);
   }
 
   async setResult(jobId, result) {
     const key = `job:${jobId}:result`;
-    await this.#redis.set(key, JSON.stringify(result), 'EX', JOB_TTL);
+    const val = JSON.stringify(result);
+    const ok = await this.#r(() => this.#redis.set(key, val, 'EX', JOB_TTL));
+    if (!ok) this.#mem.set(key, val);
   }
 
   async storeListing(url, listing) {
     const key = `listing:${url}`;
-    await this.#redis.set(key, JSON.stringify(listing), 'EX', LISTING_TTL);
+    const val = JSON.stringify(listing);
+    const ok = await this.#r(() => this.#redis.set(key, val, 'EX', LISTING_TTL));
+    if (!ok) this.#mem.set(key, val);
   }
 
   async getListing(url) {
-    const raw = await this.#redis.get(`listing:${url}`);
+    const key = `listing:${url}`;
+    const raw = (await this.#r(() => this.#redis.get(key))) ?? this.#mem.get(key) ?? null;
     return raw ? JSON.parse(raw) : null;
   }
 

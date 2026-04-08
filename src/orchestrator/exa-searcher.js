@@ -211,9 +211,11 @@ export class ExaSearcher {
       // Sahibinden: ZenRows ile scrape edilecek — Exa'dan URL'leri al
       // (artık filtrelenmeyecek, URL routing'de ZenRows'a yönlendirilecek)
 
-      // Hepsiemlak: tüm URL'lere izin ver — Apify search sayfalarını detail URL'lere genişletir
+      // Hepsiemlak: sadece bireysel ilan sayfalarına izin ver
+      // Kategori/arama sayfaları (/konut, /arsa, /satilik vb.) filtrele
       if (host.includes('hepsiemlak.com')) {
-        return true;
+        // Detail sayfası: /ilan/ içeriyor VEYA URL'de 7+ haneli sayısal ID var
+        return /\/ilan\//.test(path) || /\/\d{7,}/.test(path) || /[\-\/]\d{7,}/.test(path);
       }
 
       return true;

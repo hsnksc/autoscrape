@@ -39,8 +39,8 @@ zenrowsScraper.setLogger(logger);
 const zyteScraper = new ZyteScraper();
 zyteScraper.setLogger(logger);
 
-// ZenRows'a yönlendirilecek domain'ler (sahibinden + remax)
-const ZENROWS_DOMAINS = ['sahibinden.com', 'remax.com.tr'];
+// ZenRows'a yönlendirilecek domain'ler (sadece sahibinden — remax.com.tr Zyte'a yönlendirilir)
+const ZENROWS_DOMAINS = ['sahibinden.com'];
 
 const WEBHOOK_URL = process.env.WEBHOOK_URL || 'http://localhost:3001/api/webhook/apify';
 
