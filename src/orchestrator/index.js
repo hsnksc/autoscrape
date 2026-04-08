@@ -136,14 +136,14 @@ async function runSearch(jobId, { lat, lng, rooms, minPrice, maxPrice }) {
       const [zenrowsListings, zyteListings] = await Promise.all([zenrowsPromise, zytePromise]);
       logger.info({ jobId, zenrows: zenrowsListings.length, zyte: zyteListings.length }, 'Scrape sonuçları toplandı');
 
-      const merged = dedup([...priced, ...zenrowsListings, ...zyteListings]);
+      const merged = qualify(dedup([...priced, ...zenrowsListings, ...zyteListings]));
       await cache.setResult(jobId, merged);
       await cache.setStatus(jobId, JobStatus.COMPLETED);
       broadcastResult(jobId, merged);
       logger.info({ jobId, count: merged.length }, 'Job tamamlandı (hybrid)');
     } else {
       // 4b. Link yoksa direkt tamamla
-      const unique = dedup([...priced]);
+      const unique = qualify(dedup([...priced]));
       await cache.setResult(jobId, unique);
       await cache.setStatus(jobId, JobStatus.COMPLETED);
       broadcastResult(jobId, unique);
@@ -180,7 +180,7 @@ app.post('/api/webhook/apify', async (req, res) => {
     // ── Case A: main.py doğrudan listings gönderdi ──
     if (Array.isArray(listings)) {
       const exaResults = await cache.getExaResults(jobId);
-      const merged = dedup([...exaResults, ...listings]);
+      const merged = qualify(dedup([...exaResults, ...listings]));
       await cache.setResult(jobId, merged);
       await cache.setStatus(jobId, JobStatus.COMPLETED);
       broadcastResult(jobId, merged);
@@ -206,7 +206,7 @@ app.post('/api/webhook/apify', async (req, res) => {
     if (datasetId) {
       const apifyListings = await apifyScraper.fetchDataset(datasetId);
       const exaResults = await cache.getExaResults(jobId);
-      const merged = dedup([...exaResults, ...apifyListings]);
+      const merged = qualify(dedup([...exaResults, ...apifyListings]));
       await cache.setResult(jobId, merged);
       await cache.setStatus(jobId, JobStatus.COMPLETED);
       broadcastResult(jobId, merged);
@@ -288,6 +288,18 @@ async function pollApifyRun(jobId, runId, maxWaitMs = 3 * 60 * 1000) {
 
   logger.error({ jobId, runId }, 'Apify polling: süre aşıldı');
   await cache.setStatus(jobId, JobStatus.FAILED, { error: 'Apify timeout' });
+}
+
+/**
+ * Fiyat, m2 (net veya brüt) ve emlak cinsi (rooms) olmayan ilanları filtreler.
+ */
+function qualify(listings) {
+  return listings.filter((l) => {
+    const hasPrice = l.price != null && l.price > 0;
+    const hasM2 = (l.netM2 != null && l.netM2 > 0) || (l.grossM2 != null && l.grossM2 > 0);
+    const hasType = l.rooms != null && String(l.rooms).trim() !== '';
+    return hasPrice && hasM2 && hasType;
+  });
 }
 
 function dedup(listings) {
